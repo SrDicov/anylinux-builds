@@ -53,10 +53,15 @@ jobs:
           [ "${{ inputs.force }}" = "true" ] && ARGS="$ARGS --force"
           if [ "${{ github.event_name }}" = "push" ]; then
             CHANGED=$(git diff --name-only HEAD~1 HEAD -- packages | cut -d/ -f2 | sort -u | tr '\n' ' ' || true)
-            [ -n "$CHANGED" ] && ARGS="$ARGS --force-include \"$CHANGED\""
+          else
+            CHANGED=""
           fi
           # shellcheck disable=SC2086
-          python3 builder/discover.py $ARGS
+          if [ -n "$CHANGED" ]; then
+            python3 builder/discover.py $ARGS --force-include "$CHANGED"
+          else
+            python3 builder/discover.py $ARGS
+          fi
 
   build:
     needs: discover
@@ -69,6 +74,9 @@ jobs:
     container: ghcr.io/pkgforge-dev/archlinux:latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Bootstrap python3 for recipe parsing
+        run: pacman -Sy --noconfirm python3
 
       - name: Build AppImage
         run: sh builder/build.sh ${{ matrix.pkg.dir }}

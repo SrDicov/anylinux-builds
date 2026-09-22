@@ -50,6 +50,7 @@ pacman)
 	;;
 aur)
 	# makepkg refuses to run as root; build as an unprivileged user.
+	command -v useradd >/dev/null 2>&1 || pacman -S --noconfirm shadow
 	id builder >/dev/null 2>&1 || useradd -m builder
 	echo "builder ALL=(ALL) NOPASSWD: /usr/bin/pacman" >/etc/sudoers.d/builder-pacman
 	chmod 440 /etc/sudoers.d/builder-pacman
@@ -77,5 +78,7 @@ chmod +x ./quick-sharun
 
 ./quick-sharun --make-appimage
 
-./quick-sharun --test ./dist/*.AppImage
+# Electron/Chromium apps refuse their sandbox as container root;
+# harmless for everything else.
+ELECTRON_DISABLE_SANDBOX=1 ./quick-sharun --test ./dist/*.AppImage
 echo "=== built: $OUTPATH/$OUTNAME ==="
