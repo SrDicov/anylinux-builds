@@ -1,0 +1,14 @@
+# Template: paquete de los repos oficiales de Arch.
+# Copia este directorio para añadir una app: solo edita los valores.
+name: htop
+source:
+  type: pacman
+  pkg: htop
+bin: /usr/bin/htop
+icon: DUMMY
+desktop: DUMMY
+main_bin: htop
+build_deps: []
+debloat: none
+hooks: []
+host_drivers: false

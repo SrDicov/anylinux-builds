@@ -1,0 +1,8 @@
+dist/
+AppDir/
+*.AppImage
+*.AppImage.zsync
+quick-sharun
+get-debloated-pkgs.sh
+/tmp/
+__pycache__/

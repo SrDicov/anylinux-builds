@@ -1,0 +1,15 @@
+# Template: paquete de AUR (idealmente *-bin: precompilado, sin toolchain).
+# Se compila como usuario no-root con makepkg dentro del contenedor Arch.
+# NOTA: verifica bin/icon/desktop en la primera compilacion (dispatch manual).
+name: vesktop-bin
+source:
+  type: aur
+  pkg: vesktop-bin
+bin: /usr/bin/vesktop
+icon: DUMMY
+desktop: DUMMY
+main_bin: vesktop
+build_deps: []
+debloat: mesa
+hooks: [fix-namespaces.hook]
+host_drivers: false

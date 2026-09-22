@@ -1,0 +1,115 @@
+name: Daily builds
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Build only this package dir (empty = all changed)"
+        default: ""
+        required: false
+      force:
+        description: "Rebuild even if upstream version is unchanged"
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - "packages/**"
+      - "builder/**"
+      - ".github/workflows/build.yml"
+
+concurrency:
+  group: build
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  discover:
+    runs-on: ubuntu-24.04
+    container: ghcr.io/pkgforge-dev/archlinux:latest
+    outputs:
+      matrix: ${{ steps.d.outputs.matrix }}
+      count: ${{ steps.d.outputs.count }}
+      versions: ${{ steps.d.outputs.versions }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Sync package db + tools for version checks
+        run: pacman -Sy --noconfirm python3 curl
+
+      - name: Discover changed packages
+        id: d
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ARGS=""
+          [ -n "${{ inputs.package }}" ] && ARGS="$ARGS --filter ${{ inputs.package }}"
+          [ "${{ inputs.force }}" = "true" ] && ARGS="$ARGS --force"
+          if [ "${{ github.event_name }}" = "push" ]; then
+            CHANGED=$(git diff --name-only HEAD~1 HEAD -- packages | cut -d/ -f2 | sort -u | tr '\n' ' ' || true)
+            [ -n "$CHANGED" ] && ARGS="$ARGS --force-include \"$CHANGED\""
+          fi
+          # shellcheck disable=SC2086
+          python3 builder/discover.py $ARGS
+
+  build:
+    needs: discover
+    if: needs.discover.outputs.count != '0'
+    strategy:
+      fail-fast: false
+      matrix:
+        pkg: ${{ fromJson(needs.discover.outputs.matrix) }}
+    runs-on: ubuntu-24.04
+    container: ghcr.io/pkgforge-dev/archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build AppImage
+        run: sh builder/build.sh ${{ matrix.pkg.dir }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.pkg.name }}
+          path: dist
+
+  publish:
+    needs: [discover, build]
+    if: needs.discover.outputs.count != '0' && needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish rolling release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=continuous
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" --title "Continuous builds" \
+              --notes "Rolling AnyLinux AppImages. Rebuilt daily when upstream changes."
+          for f in release-assets/*.AppImage; do
+            gh release delete-asset "$TAG" "$(basename "$f")" --yes >/dev/null 2>&1 || true
+          done
+          gh release upload "$TAG" release-assets/*.AppImage --clobber
+
+      - name: Update version state
+        run: |
+          python3 builder/discover.py --write '${{ needs.discover.outputs.versions }}'
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add versions.json
+          git diff --cached --quiet || git commit -m "chore: update versions.json"
+          git push

@@ -1,0 +1,16 @@
+# Template: binario suelto desde una URL (contrato v1: un solo ejecutable).
+# url_version fija como se detecta el cambio: github:owner/repo o etag
+# (ETag/Last-Modified del HEAD). Sin versiones fijadas en el template.
+name: yt-dlp
+source:
+  type: url
+  url: https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux
+  url_version: github:yt-dlp/yt-dlp
+bin: /usr/bin/yt-dlp
+icon: DUMMY
+desktop: DUMMY
+main_bin: yt-dlp
+build_deps: []
+debloat: none
+hooks: []
+host_drivers: false
