@@ -44,8 +44,8 @@ def parse(text):
             if key in ("build_deps", "hooks"):
                 raise ValueError(f"line {lineno}: '{key}' must be top-level")
             raise ValueError(f"line {lineno}: unexpected indentation")
-    # block-style lists: rescan for "- item" under build_deps/hooks
-    for key in ("build_deps", "hooks"):
+    # block-style lists: rescan for "- item" under known list keys
+    for key in ("build_deps", "hooks", "test_args"):
         items = _block_list(text, key)
         if items is not None:
             root[key] = items
@@ -90,6 +90,7 @@ def load_recipe(path):
         data = parse(f.read())
     data.setdefault("build_deps", [])
     data.setdefault("hooks", [])
+    data.setdefault("test_args", [])
     data.setdefault("debloat", "common")
     data.setdefault("host_drivers", "false")
     for key in ("name", "bin", "icon", "desktop"):

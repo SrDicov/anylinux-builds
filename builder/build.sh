@@ -78,7 +78,18 @@ chmod +x ./quick-sharun
 
 ./quick-sharun --make-appimage
 
-# Electron/Chromium apps refuse their sandbox as container root;
-# harmless for everything else.
-ELECTRON_DISABLE_SANDBOX=1 ./quick-sharun --test ./dist/*.AppImage
+echo "=== testing ==="
+if [ -n "$RECIPE_TEST_ARGS" ]; then
+	# Short-lived CLI: must exit 0 with the given args (missing
+	# bundled libs fail here). Same extract-and-run env as --test.
+	export APPIMAGE_TARGET_DIR="$PWD"/_test-app
+	export APPIMAGE_EXTRACT_AND_RUN=1
+	# shellcheck disable=SC2086
+	./dist/*.AppImage $RECIPE_TEST_ARGS
+else
+	# Long-running GUI/TUI: quick-sharun requires it to stay alive
+	# 12s. Force a sane TERM (CI sets TERM=unknown; ncurses aborts).
+	# ELECTRON_DISABLE_SANDBOX covers Chromium apps as container root.
+	TERM=xterm ELECTRON_DISABLE_SANDBOX=1 ./quick-sharun --test ./dist/*.AppImage
+fi
 echo "=== built: $OUTPATH/$OUTNAME ==="

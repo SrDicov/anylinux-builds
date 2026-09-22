@@ -14,3 +14,6 @@ build_deps: []
 debloat: none
 hooks: []
 host_drivers: false
+# Short-lived CLI: --test would fail (it must stay alive 12s),
+# so the smoke test runs the AppImage with these args instead.
+test_args: [--version]

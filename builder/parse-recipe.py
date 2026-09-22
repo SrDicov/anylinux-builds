@@ -29,6 +29,7 @@ def main():
         "RECIPE_BUILD_DEPS": " ".join(data.get("build_deps", []) or []),
         "RECIPE_DEBLOAT": data.get("debloat", "common"),
         "RECIPE_HOOKS": ":".join(data.get("hooks", []) or []),
+        "RECIPE_TEST_ARGS": " ".join(data.get("test_args", []) or []),
         "RECIPE_HOST_DRIVERS": "1"
         if str(data.get("host_drivers", "false")).lower() in ("1", "true", "yes")
         else "0",
