@@ -138,6 +138,30 @@ if [ -n "$RECIPE_DATA_FROM" ]; then
 		done
 fi
 
+if [ -n "$RECIPE_RUNTIME_FROM" ]; then
+	# Chromium-style runtime libs (libEGL.so, libGLESv2.so, SwiftShader,
+	# libffmpeg.so) are dlopened from the exe dir, so quick-sharun never
+	# deploys them. Stage them beside the binary launchers. Skip names
+	# already deployed (never shadow sharun's SONAME libs). Follows
+	# symlinks (cp -L): a dangling link fails the build loudly.
+	[ -d "$RECIPE_RUNTIME_FROM" ] || {
+		echo "ERROR: runtime_from '$RECIPE_RUNTIME_FROM' not found" >&2
+		exit 1
+	}
+	APPDIR_BIN="${APPDIR:-$PWD/AppDir}/bin"
+	(cd "$RECIPE_RUNTIME_FROM" && find . -maxdepth 1 \( -type f -o -type l \) \
+		\( -name '*.so*' -o -name 'vk_swiftshader_icd.json' \)) |
+		while IFS= read -r f; do
+			f="${f#./}"
+			if [ -e "$APPDIR_BIN/$f" ]; then
+				echo "runtime: skip (deployed): $f"
+				continue
+			fi
+			cp -L "$RECIPE_RUNTIME_FROM/$f" "$APPDIR_BIN/$f"
+			echo "runtime: staged $f"
+		done
+fi
+
 # Default env baked into the image (sharun sources $APPDIR/.env).
 python3 - "$RECIPE_DIR" > /tmp/app-env-lines <<'PYEOF'
 import sys

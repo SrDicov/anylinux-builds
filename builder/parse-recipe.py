@@ -35,6 +35,7 @@ def main():
         "RECIPE_TEST_ARGS": " ".join(data.get("test_args", []) or []),
         "RECIPE_EXTRA_PATHS": " ".join(data.get("extra_paths", []) or []),
         "RECIPE_DATA_FROM": data.get("data_from", ""),
+        "RECIPE_RUNTIME_FROM": data.get("runtime_from", ""),
         "RECIPE_BUILD_OUT": data.get("build_out", ""),
         "RECIPE_HOST_DRIVERS": "1"
         if str(data.get("host_drivers", "false")).lower() in ("1", "true", "yes")

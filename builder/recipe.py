@@ -109,6 +109,7 @@ def load_recipe(path):
     data.setdefault("build_out", "")
     data.setdefault("extra_paths", [])
     data.setdefault("app_env", [])
+    data.setdefault("runtime_from", "")
     data.setdefault("debloat", "common")
     data.setdefault("host_drivers", "false")
     for key in ("name", "bin", "icon", "desktop"):
