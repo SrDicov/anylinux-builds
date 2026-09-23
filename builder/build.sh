@@ -38,6 +38,13 @@ else
 		printf '\n[multilib]\nInclude = /etc/pacman.d/mirrorlist\n' >>/etc/pacman.conf
 fi
 pacman -Sy
+if pacman -Qu archlinux-keyring 2>/dev/null | grep -q archlinux-keyring; then
+	# The keyring upgrade locally signs keys; fresh containers have no
+	# pacman master key ("no secret key" failure). Rekey first.
+	rm -rf /etc/pacman.d/gnupg
+	pacman-key --init
+	pacman-key --populate archlinux
+fi
 pacman -Syu --noconfirm \
 	base-devel git patchelf wget xorg-server-xvfb python3 \
 	$RECIPE_BUILD_DEPS
