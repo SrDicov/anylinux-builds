@@ -197,6 +197,84 @@ static void dbg_fake(void) {
 			2, m, n);
 }
 
+#define SYS_readlinkat_x64 267
+#define SYS_readlink_x86 85
+static long raw_readlink_cwd(char *b, unsigned long c) {
+	static const char p[] = "/proc/self/cwd";
+	long r;
+#ifdef __x86_64__
+	__asm__ volatile ("syscall"
+		: "=a" (r)
+		: "a" ((long)SYS_readlinkat_x64), "D" ((long)AT_FDCWD), "S" ((long)p), "d" ((long)b), "r" ((long)c)
+		: "rcx", "r11", "memory");
+#else
+	__asm__ volatile ("int $0x80"
+		: "=a" (r)
+		: "a" ((long)SYS_readlink_x86), "b" ((long)p), "c" ((long)b), "d" ((long)c)
+		: "memory");
+#endif
+	return r;
+}
+
+/* Verbose: log every intercepted path (capped) plus caller CWD. */
+static void dbg_call(const char *p) {
+	static const char pre[] = "steam-shim: statvfs ";
+	static const char mid[] = " cwd=";
+	char cwd[256];
+	unsigned long n = 0;
+	long r;
+	if (!debug_on())
+		return;
+	raw_rw(
+#ifdef __x86_64__
+		SYS_write,
+#else
+		SYS_write,
+#endif
+		2, pre, sizeof(pre) - 1);
+	while (n < 200 && p[n])
+		n++;
+	if (n)
+		raw_rw(
+#ifdef __x86_64__
+			SYS_write,
+#else
+			SYS_write,
+#endif
+			2, p, n);
+	raw_rw(
+#ifdef __x86_64__
+		SYS_write,
+#else
+		SYS_write,
+#endif
+		2, mid, sizeof(mid) - 1);
+	r = raw_readlink_cwd(cwd, sizeof(cwd) - 1);
+	if (r > 0)
+		raw_rw(
+#ifdef __x86_64__
+			SYS_write,
+#else
+			SYS_write,
+#endif
+			2, cwd, (unsigned long)r);
+	else
+		raw_rw(
+#ifdef __x86_64__
+			SYS_write,
+#else
+			SYS_write,
+#endif
+			2, "(cwd-unreadable)", 16);
+	raw_rw(
+#ifdef __x86_64__
+		SYS_write,
+#else
+		SYS_write,
+#endif
+		2, "\n", 1);
+}
+
 /* Verbose: log every intercepted path (capped). */
 static void dbg_path(const char *p) {
 	static const char pre[] = "steam-shim: statvfs ";
@@ -275,7 +353,7 @@ int statvfs(const char *p, struct vfs *o) {
 		u64 w[15];
 	} kb;
 	long r;
-	dbg_path(p);
+	dbg_call(p);
 	r = raw_statfs(p, &kb);
 	if (r < 0)
 		return -1;
@@ -350,7 +428,7 @@ static void fill_vfs32(struct vfs32 *o, const struct vfs64 *t) {
 int statvfs64(const char *p, struct vfs64 *o) {
 	char kb[84];
 	long r;
-	dbg_path(p);
+	dbg_call(p);
 	r = raw_statfs(p, kb);
 	if (r < 0)
 		return -1;
