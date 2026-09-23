@@ -92,6 +92,14 @@ jobs:
           python3 builder/parse-recipe.py packages/yt-dlp | cat -A | head -n20
           eval "EA=''; EB='x'"; echo "mini-eval: [${EA-unset}] [${EB-unset}]"
           python3 builder/parse-recipe.py packages/yt-dlp | cat -n
+          env | grep -iE '^(ENV|BASH_ENV|SHELLOPTS|POSIXLY|GITHUB_)' | head -n20
+          eval "$(python3 builder/parse-recipe.py packages/yt-dlp | head -n 4)"
+          echo "eval4: urlbin=[${RECIPE_URL_BIN-unset}]"
+          eval "$(python3 builder/parse-recipe.py packages/yt-dlp | head -n 5)"
+          echo "eval5: urlbin=[${RECIPE_URL_BIN-unset}]"
+          python3 builder/parse-recipe.py packages/yt-dlp > /tmp/recipe.env
+          set -a; . /tmp/recipe.env; set +a
+          echo "dotsrc: urlbin=[${RECIPE_URL_BIN-unset}]"
           out="$(python3 builder/parse-recipe.py packages/yt-dlp)"
           echo "out-lines: $(printf '%s' "$out" | wc -l)"
           echo "out-md5: $(printf '%s' "$out" | md5sum)"
