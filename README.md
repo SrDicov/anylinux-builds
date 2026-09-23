@@ -31,7 +31,10 @@ that can't stay alive 12s under `--test`),
 `extra_paths` (optional: extra dirs whose `.so`/binaries get deployed),
 `data_from` (optional: dir of runtime DATA copied next to the binary —
 Electron `icudtl.dat`/`*.pak`/`locales`/`app.asar`; never ELFs),
-`app_env` (optional: `KEY=VALUE` lines baked into the image env).
+`app_env` (optional: `KEY=VALUE` lines baked into the image env),
+`runtime_from` (optional: dir whose `*.so*` are staged next to the binary —
+Chromium `libEGL`/`libGLESv2`/SwiftShader/`libffmpeg`; skipped if already
+deployed, so sharun libs are never shadowed).
 
 ## How it works
 
