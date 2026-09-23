@@ -41,7 +41,7 @@ jobs:
           fetch-depth: 2
 
       - name: Sync package db + tools for version checks
-        run: pacman -Sy --noconfirm python3 curl
+        run: pacman -Sy --noconfirm python3 curl git
 
       - name: Discover changed packages
         id: d
