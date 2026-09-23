@@ -12,3 +12,5 @@ build_deps: []
 debloat: none
 hooks: []
 host_drivers: false
+# TUI sin tty en CI: --test la mataria; smoke directo en su lugar.
+test_args: [--version]
