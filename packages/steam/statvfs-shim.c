@@ -546,6 +546,7 @@ static long route_exec(const char *path, char *const *argv, char *const *envp,
 	char ldlp[4096];
 	char lpref[4112];
 	char ldcand[1024];
+	char lparg[2048];
 	const char *ld, *libs, *oldlp;
 	unsigned long i, n = 0, m = 0, l;
 	if (!argv || !envp)
@@ -556,7 +557,48 @@ static long route_exec(const char *path, char *const *argv, char *const *envp,
 		return raw_execve(path, argv, (char *const *)envp);
 	nargv[n++] = (char *)ld;
 	nargv[n++] = (char *)"--library-path";
-	nargv[n++] = (char *)libs;
+	/* Loader search path: image libs, then scout triplet dirs next to the
+	 * target. The loader arg applies to every lookup in the process
+	 * (including transitive deps of dlopened libs), independent of env,
+	 * so scrubbed relaunches keep working. Nonexistent dirs are ignored
+	 * by the loader, no existence check needed. */
+	{
+		unsigned long o = 0, q, dl = 0, slash = 0;
+		static const char t32[3][40] = {
+			"/steam-runtime/lib/i386-linux-gnu",
+			"/steam-runtime/usr/lib/i386-linux-gnu",
+			"/steam-runtime/pinned_libs_32"
+		};
+		static const char t64[3][40] = {
+			"/steam-runtime/lib/x86_64-linux-gnu",
+			"/steam-runtime/usr/lib/x86_64-linux-gnu",
+			"/steam-runtime/pinned_libs_64"
+		};
+		while (libs[o] && o < sizeof(lparg) - 1) {
+			lparg[o] = libs[o];
+			o++;
+		}
+		while (path[dl]) {
+			if (path[dl] == '/')
+				slash = dl;
+			dl++;
+		}
+		if (slash > 0 && slash < 800) {
+			for (q = 0; q < 3; q++) {
+				const char *sfx = is64 ? t64[q] : t32[q];
+				unsigned long sl = r_strlen(sfx), k;
+				if (slash + sl >= sizeof(lparg) - 1 || o + 1 + slash + sl >= sizeof(lparg) - 1)
+					break;
+				lparg[o++] = ':';
+				for (k = 0; k < slash; k++)
+					lparg[o++] = path[k];
+				for (k = 0; k < sl; k++)
+					lparg[o++] = sfx[k];
+			}
+		}
+		lparg[o] = 0;
+		nargv[n++] = lparg;
+	}
 	nargv[n++] = (char *)path;
 	for (i = 1; argv[i] && n < 127; i++)
 		nargv[n++] = argv[i];
