@@ -93,6 +93,8 @@ def _block_list(text, key):
                 items = []
             continue
         if inside:
+            if not content or content.startswith("#"):
+                continue  # blank/comment lines never end a block list
             if content.startswith("- "):
                 items.append(_scalar(content[2:].strip()))
             else:
