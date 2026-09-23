@@ -1,11 +1,14 @@
 # Template: paquete de AUR (idealmente *-bin: precompilado, sin toolchain).
 # Se compila como usuario no-root con makepkg dentro del contenedor Arch.
+# OJO: el lanzador /usr/bin/vesktop es un script con `exec /opt/...`
+# absoluto; hay que empaquetar el binario REAL o el AppImage solo
+# funciona en la maquina que lo compilo (fuga por ruta absoluta).
 # NOTA: verifica bin/icon/desktop en la primera compilacion (dispatch manual).
 name: vesktop-bin
 source:
   type: aur
   pkg: vesktop-bin
-bin: /usr/bin/vesktop
+bin: /opt/vesktop/vesktop
 icon: DUMMY
 desktop: DUMMY
 main_bin: vesktop
