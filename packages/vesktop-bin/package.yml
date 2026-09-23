@@ -22,5 +22,6 @@ host_drivers: false
 # Electron runtime data (icudtl.dat, *.pak, locales/, app.asar) must sit
 # next to the binary; quick-sharun only deploys libs/bins.
 data_from: /opt/vesktop
-# Exits immediately in CI (no usable display/sandbox): direct smoke test.
-test_args: [--version]
+# Chromium sandbox breaks inside the AppImage (dead zygote -> FATAL);
+# disable it by default (verified: Discord loads, window opens).
+app_env: [ELECTRON_DISABLE_SANDBOX=1]

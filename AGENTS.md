@@ -24,6 +24,8 @@ Cloud builder for sharun-based AppImages. One generic pipeline, N declarative re
   bundle the REAL binary in `bin:` instead. CI `--test` false-passes when the
   build machine has the app installed (absolute path leaks to the system
   copy); always validate the AppImage on a clean machine.
+- Chromium apps: zygote sandbox dies inside the image (FATAL goodbye);
+  bake `app_env: [ELECTRON_DISABLE_SANDBOX=1]` (verified working).
 
 ## Validate locally (Arch)
 

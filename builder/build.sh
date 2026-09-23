@@ -138,6 +138,25 @@ if [ -n "$RECIPE_DATA_FROM" ]; then
 		done
 fi
 
+# Default env baked into the image (sharun sources $APPDIR/.env).
+python3 - "$RECIPE_DIR" > /tmp/app-env-lines <<'PYEOF'
+import sys
+sys.path.insert(0, 'builder')
+from recipe import load_recipe
+data = load_recipe(sys.argv[1] + '/package.yml')
+lines = data.get('app_env', []) or []
+for line in lines:
+    assert '=' in line, line
+sys.stdout.write('\n'.join(lines) + ('\n' if lines else ''))
+PYEOF
+if [ -s /tmp/app-env-lines ]; then
+	APPENV_FILE="${APPDIR:-$PWD/AppDir}/.env"
+	touch "$APPENV_FILE"
+	cat /tmp/app-env-lines >> "$APPENV_FILE"
+	echo "=== baked app env ==="
+	cat /tmp/app-env-lines
+fi
+
 ./quick-sharun --make-appimage
 
 echo "=== testing ==="

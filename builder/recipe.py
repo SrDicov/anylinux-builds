@@ -9,7 +9,7 @@ block `- item` lists, true/false booleans. Exits non-zero on error.
 import sys
 
 
-LIST_KEYS = ("build_deps", "hooks", "test_args", "build_run", "extra_paths")
+LIST_KEYS = ("build_deps", "hooks", "test_args", "build_run", "extra_paths", "app_env")
 
 
 def parse(text):
@@ -108,6 +108,7 @@ def load_recipe(path):
     data.setdefault("build_run", [])
     data.setdefault("build_out", "")
     data.setdefault("extra_paths", [])
+    data.setdefault("app_env", [])
     data.setdefault("debloat", "common")
     data.setdefault("host_drivers", "false")
     for key in ("name", "bin", "icon", "desktop"):
