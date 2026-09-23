@@ -27,11 +27,17 @@ export OUTNAME="$RECIPE_NAME-$ARCH.AppImage"
 [ "$RECIPE_HOST_DRIVERS" = 1 ] && export USE_HOST_DRIVERS_EXPERIMENTAL=1
 
 echo "=== installing base build deps ==="
-if ! grep -q '^\[multilib\]' /etc/pacman.conf; then
-	# Steam-style 32-bit stacks need multilib (harmless when unused).
+# Steam-style 32-bit stacks need multilib. Container pacman.conf layouts
+# vary (commented section vs active section without mirrors), so normalize
+# instead of assuming one format. Fresh container per run: no dup risk.
+if grep -q '^\[multilib\]' /etc/pacman.conf; then
+	sed -i '/^\[multilib\]/a Include = /etc/pacman.d/mirrorlist' /etc/pacman.conf
+else
 	sed -i '/^#\[multilib\]/,/^#Include/ s/^#//' /etc/pacman.conf
-	pacman -Sy
+	grep -q '^\[multilib\]' /etc/pacman.conf ||
+		printf '\n[multilib]\nInclude = /etc/pacman.d/mirrorlist\n' >>/etc/pacman.conf
 fi
+pacman -Sy
 pacman -Syu --noconfirm \
 	base-devel git patchelf wget xorg-server-xvfb python3 \
 	$RECIPE_BUILD_DEPS
