@@ -10,6 +10,11 @@ BUILDER_DIR="$(dirname "$(readlink -f "$0")")"
 . "$BUILDER_DIR/pinned.sh"
 
 eval "$(python3 "$BUILDER_DIR/parse-recipe.py" "$RECIPE_DIR")"
+# Defaults decouple build.sh from parser skew (unset vars are fatal under set -u).
+: "${SOURCE_PKG:=}" "${SOURCE_URL:=}" "${SOURCE_URL_BIN:=}" "${SOURCE_REPO:=}" \
+	"${SOURCE_REF:=}" "${SOURCE_URL_VERSION:=}" "${RECIPE_MAIN_BIN:=}" \
+	"${RECIPE_BUILD_DEPS:=}" "${RECIPE_DEBLOAT:=common}" "${RECIPE_HOOKS:=}" \
+	"${RECIPE_TEST_ARGS:=}" "${RECIPE_BUILD_OUT:=}" "${RECIPE_HOST_DRIVERS:=0}"
 
 ARCH="$(uname -m)"
 export ICON="$RECIPE_ICON"
