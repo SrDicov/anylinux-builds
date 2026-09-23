@@ -1,5 +1,7 @@
 {
+  "concord": "2.6.0-1",
   "htop": "3.5.3-1",
+  "opencode": "c5aa7d7e34a19af7b94f5937f905ab2bac58e4a7",
   "vesktop-bin": "1.6.7-5",
   "yt-dlp": "2026.08.19"
 }
