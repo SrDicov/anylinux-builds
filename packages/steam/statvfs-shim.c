@@ -312,36 +312,411 @@ static void dbg_call(const char *p) {
 		2, "\n", 1);
 }
 
-/* Verbose: log every intercepted path (capped). */
-static void dbg_path(const char *p) {
-	static const char pre[] = "steam-shim: statvfs ";
+/* ---- execve router: run ELF binaries whose INTERP is missing via the
+ * bundled loaders, WITHOUT touching files on disk (keeps Valve's
+ * checksum verification happy and covers update-delivered binaries).
+ * Only reroutes when the kernel could not run the file itself. ---- */
+extern char **environ;
+
+static unsigned long r_strlen(const char *s) {
 	unsigned long n = 0;
+	while (s[n])
+		n++;
+	return n;
+}
+static int r_strneq(const char *a, const char *b, unsigned long n) {
+	unsigned long i;
+	for (i = 0; i < n; i++)
+		if (a[i] != b[i])
+			return 0;
+	return 1;
+}
+/* getenv from the live process environ (no /proc needed). */
+static const char *r_getenv(const char *name) {
+	char **e;
+	unsigned long nl;
+	if (!environ)
+		return 0;
+	nl = r_strlen(name);
+	for (e = environ; *e; e++) {
+		unsigned long i;
+		for (i = 0; i < nl; i++)
+			if ((*e)[i] != name[i])
+				break;
+		if (i == nl && (*e)[nl] == '=')
+			return *e + nl + 1;
+	}
+	return 0;
+}
+#ifdef __x86_64__
+#define SYS_execve 59
+#else
+#define SYS_execve 11
+#endif
+static long raw_execve(const char *p, char *const *a, char *const *e) {
+	long r;
+#ifdef __x86_64__
+	__asm__ volatile ("syscall"
+		: "=a" (r)
+		: "a" ((long)SYS_execve), "D" ((long)p), "S" ((long)a), "d" ((long)e)
+		: "rcx", "r11", "memory");
+#else
+	__asm__ volatile ("int $0x80"
+		: "=a" (r)
+		: "a" ((long)SYS_execve), "b" ((long)p), "c" ((long)a), "d" ((long)e)
+		: "memory");
+#endif
+	return r;
+}
+/* Verbose: log a rerouted exec (capped path). */
+static void dbg_route(const char *p, const char *ld) {
+	static const char pre[] = "steam-shim: routed exec ";
+	char buf[200];
+	unsigned long n = 0, m = 0;
 	if (!debug_on())
 		return;
-	raw_rw(
-#ifdef __x86_64__
-		SYS_write,
-#else
-		SYS_write,
-#endif
-		2, pre, sizeof(pre) - 1);
-	while (n < 200 && p[n])
+	while (pre[n]) {
+		buf[n] = pre[n];
 		n++;
-	if (n)
-		raw_rw(
-#ifdef __x86_64__
-			SYS_write,
-#else
-			SYS_write,
-#endif
-			2, p, n);
+	}
+	m = 0;
+	while (n < 110 && p[m]) {
+		buf[n] = p[m];
+		n++;
+		m++;
+	}
+	buf[n++] = ' ';
+	buf[n++] = 'v';
+	buf[n++] = 'i';
+	buf[n++] = 'a';
+	buf[n++] = ' ';
+	m = 0;
+	while (n < (unsigned long)(sizeof(buf) - 2) && ld[m])
+		buf[n++] = ld[m++];
+	buf[n++] = '\n';
 	raw_rw(
 #ifdef __x86_64__
 		SYS_write,
 #else
 		SYS_write,
 #endif
-		2, "\n", 1);
+		2, buf, n);
+}
+/* Read exactly c bytes (short reads looped). Returns 0 on success. */
+static int r_read_all(long fd, char *b, unsigned long c) {
+	while (c) {
+		long r = raw_rw(
+#ifdef __x86_64__
+			SYS_read,
+#else
+			SYS_read,
+#endif
+			fd, b, c);
+		if (r <= 0)
+			return -1;
+		b += (unsigned long)r;
+		c -= (unsigned long)r;
+	}
+	return 0;
+}
+/* Discard c bytes (chunked: never overflows the scratch buffer). */
+static int r_discard(long fd, unsigned long c) {
+	static char trash[1024];
+	while (c) {
+		unsigned long step = c > sizeof(trash) ? sizeof(trash) : c;
+		long r = raw_rw(
+#ifdef __x86_64__
+			SYS_read,
+#else
+			SYS_read,
+#endif
+			fd, trash, step);
+		if (r <= 0)
+			return -1;
+		c -= (unsigned long)r;
+	}
+	return 0;
+}
+/* If path is an ELF whose INTERP cannot be opened, return 1 and set
+ * *is64; else return 0. Never fails the caller: errors mean passthrough. */
+static int needs_router(const char *path, int *is64) {
+	/* Stack-local: exec can come from any thread. */
+	char eb[64];
+	char ph[32 * 56];
+	char ib[512];
+	unsigned long phoff, phesz, phn, i, pos, ppsz;
+	long fd, ird;
+	int cls;
+	fd = raw_open(path);
+	if (fd < 0)
+		return 0;
+	if (r_read_all(fd, eb, 52) != 0) {
+		raw_close(fd);
+		return 0;
+	}
+	if (eb[0] != 0x7f || eb[1] != 'E' || eb[2] != 'L' || eb[3] != 'F') {
+		raw_close(fd);
+		return 0; /* script or data: kernel handles it */
+	}
+	cls = (unsigned char)eb[4];
+	*is64 = (cls == 2);
+	if (cls == 2) {
+		if (r_read_all(fd, eb + 52, 12) != 0) {
+			raw_close(fd);
+			return 0;
+		}
+		phoff = *(u64 *)(eb + 32);
+		phesz = *(unsigned short *)(eb + 54);
+		phn = *(unsigned short *)(eb + 56);
+		ppsz = 56;
+	} else if (cls == 1) {
+		phoff = *(u32 *)(eb + 28);
+		phesz = *(unsigned short *)(eb + 42);
+		phn = *(unsigned short *)(eb + 44);
+		ppsz = 32;
+	} else {
+		raw_close(fd);
+		return 0;
+	}
+	if (phesz != ppsz || phn > 32 || phoff < 52 || phoff > 52 + 4096) {
+		raw_close(fd);
+		return 0;
+	}
+	pos = (cls == 2) ? 64 : 52;
+	if (phoff < pos) {
+		raw_close(fd);
+		return 0;
+	}
+	if (r_discard(fd, phoff - pos) != 0) {
+		raw_close(fd);
+		return 0;
+	}
+	pos = phoff;
+	if (r_read_all(fd, ph, phn * phesz) != 0) {
+		raw_close(fd);
+		return 0;
+	}
+	pos += phn * phesz;
+	for (i = 0; i < phn; i++) {
+		char *e = ph + i * phesz;
+		u32 t;
+		unsigned long off, fsz;
+		if (cls == 2) {
+			t = *(u32 *)e;
+			off = *(u64 *)(e + 8);
+			fsz = *(u64 *)(e + 32);
+		} else {
+			t = *(u32 *)e;
+			off = *(u32 *)(e + 4);
+			fsz = *(u32 *)(e + 16);
+		}
+		if (t != 3) /* PT_INTERP */
+			continue;
+		if (fsz < 2 || fsz > sizeof(ib) - 1 || off < pos ||
+		    off > pos + 64 * 1024) {
+			raw_close(fd);
+			return 0;
+		}
+		if (r_discard(fd, off - pos) != 0) {
+			raw_close(fd);
+			return 0;
+		}
+		if (r_read_all(fd, ib, fsz) != 0) {
+			raw_close(fd);
+			return 0;
+		}
+		raw_close(fd);
+		ib[fsz] = 0;
+		ird = raw_open(ib);
+		if (ird >= 0) {
+			raw_close(ird);
+			return 0; /* loader present: kernel can run it */
+		}
+		return 1; /* INTERP missing: reroute */
+	}
+	raw_close(fd);
+	return 0; /* static binary or no INTERP: kernel handles it */
+}
+/* Reroute path (missing loader) via bundled ld. Returns only on failure. */
+static long route_exec(const char *path, char *const *argv, char *const *envp,
+		       int is64) {
+	/* Stack-local: exec can come from any thread. */
+	char *nargv[128];
+	char *nenvp[300];
+	char ldlp[2048];
+	char lpref[2064];
+	const char *ld, *libs, *oldlp;
+	unsigned long i, n = 0, m = 0, l;
+	if (!argv || !envp)
+		return raw_execve(path, argv, (char *const *)envp);
+	ld = r_getenv(is64 ? "STEAM_IMG_LD64" : "STEAM_IMG_LD32");
+	libs = r_getenv("STEAM_IMG_LIBS");
+	if (!ld || !*ld || !libs || !*libs)
+		return raw_execve(path, argv, (char *const *)envp);
+	nargv[n++] = (char *)ld;
+	nargv[n++] = (char *)"--library-path";
+	nargv[n++] = (char *)libs;
+	nargv[n++] = (char *)path;
+	for (i = 1; argv[i] && n < 127; i++)
+		nargv[n++] = argv[i];
+	if (argv[i])
+		return raw_execve(path, argv, (char *const *)envp);
+	nargv[n] = 0;
+	oldlp = r_getenv("LD_LIBRARY_PATH");
+	l = r_strlen(libs);
+	if (l > sizeof(ldlp) - 32)
+		return raw_execve(path, argv, (char *const *)envp);
+	for (i = 0; i < l; i++)
+		ldlp[m++] = libs[i];
+	if (oldlp && *oldlp) {
+		ldlp[m++] = ':';
+		for (i = 0; oldlp[i] && m < sizeof(ldlp) - 1; i++)
+			ldlp[m++] = oldlp[i];
+	}
+	ldlp[m] = 0;
+	n = 0;
+	for (i = 0; envp[i]; i++) {
+		if (r_strneq(envp[i], "LD_LIBRARY_PATH=", 16))
+			continue;
+		if (n >= 297)
+			return raw_execve(path, argv, (char *const *)envp);
+		nenvp[n++] = envp[i];
+	}
+	/* nenvp tail: fresh LD_LIBRARY_PATH entry (replaces any inherited). */
+	{
+		unsigned long k = 0;
+		const char *pre = "LD_LIBRARY_PATH=";
+		while (*pre)
+			lpref[k++] = *pre++;
+		for (i = 0; i <= m; i++)
+			lpref[k++] = ldlp[i];
+		nenvp[n++] = lpref;
+		nenvp[n] = 0;
+	}
+	dbg_route(path, ld);
+	return raw_execve(ld, nargv, nenvp);
+}
+int execve(const char *path, char *const argv[], char *const envp[]) {
+	int is64 = 0;
+	if (!envp)
+		envp = (char *const *)environ;
+	if (!path || !needs_router(path, &is64))
+		return raw_execve(path, argv, (char *const *)envp);
+	return route_exec(path, argv, envp, is64);
+}
+/* exec family -> our execve (covers fork+exec users; posix_spawn is rare
+ * in this stack and falls through to the kernel error if unresolved). */
+int execv(const char *p, char *const a[]) {
+	return execve(p, a, (char *const *)environ);
+}
+int execvpe(const char *f, char *const a[], char *const e[]) {
+	unsigned long i;
+	if (!f)
+		return raw_execve(f, a, (char *const *)e);
+	for (i = 0; f[i]; i++)
+		if (f[i] == '/')
+			return execve(f, a, e);
+	/* PATH search (bare filename). */
+	{
+		const char *pe = 0;
+		unsigned long k;
+		static char cand[1024];
+		if (e) {
+			for (k = 0; e[k]; k++) {
+				if (r_strneq(e[k], "PATH=", 5)) {
+					pe = e[k] + 5;
+					break;
+				}
+			}
+		}
+		if (!pe)
+			pe = r_getenv("PATH");
+		if (!pe)
+			pe = "/usr/bin:/bin";
+		for (;;) {
+			unsigned long dl = 0, fl = 0, c = 0;
+			while (pe[dl] && pe[dl] != ':')
+				dl++;
+			while (f[fl])
+				fl++;
+			if (dl + 1 + fl >= sizeof(cand))
+				return raw_execve(f, a, (char *const *)e);
+			for (k = 0; k < dl; k++)
+				cand[c++] = pe[k];
+			cand[c++] = '/';
+			for (k = 0; k <= fl; k++)
+				cand[c++] = f[k];
+			/* try it: needs_router succeeds only on accessible ELF */
+			{
+				int dummy = 0;
+				long fd = raw_open(cand);
+				if (fd >= 0) {
+					raw_close(fd);
+					return execve(cand, a, e);
+				}
+				(void)dummy;
+			}
+			if (!pe[dl])
+				break;
+			pe += dl + 1;
+		}
+	}
+	return raw_execve(f, a, (char *const *)e);
+}
+int execvp(const char *f, char *const a[]) {
+	return execvpe(f, a, (char *const *)environ);
+}
+/* execl family via stdarg (compiler-provided, freestanding-safe). */
+#include <stdarg.h>
+int execl(const char *p, const char *a0, ...) {
+	char *av[64];
+	unsigned long n = 0;
+	va_list ap;
+	va_start(ap, a0);
+	av[n++] = (char *)a0;
+	while (n < 63) {
+		char *a = va_arg(ap, char *);
+		av[n++] = a;
+		if (!a)
+			break;
+	}
+	va_end(ap);
+	av[63] = 0;
+	return execve(p, av, (char *const *)environ);
+}
+int execle(const char *p, const char *a0, ...) {
+	char *av[64];
+	char *const *e = 0;
+	unsigned long n = 0;
+	va_list ap;
+	va_start(ap, a0);
+	av[n++] = (char *)a0;
+	while (n < 63) {
+		char *a = va_arg(ap, char *);
+		av[n++] = a;
+		if (!a)
+			break;
+	}
+	e = va_arg(ap, char *const *);
+	va_end(ap);
+	av[63] = 0;
+	return execve(p, av, (char *const *)e);
+}
+int execlp(const char *f, const char *a0, ...) {
+	char *av[64];
+	unsigned long n = 0;
+	va_list ap;
+	va_start(ap, a0);
+	av[n++] = (char *)a0;
+	while (n < 63) {
+		char *a = va_arg(ap, char *);
+		av[n++] = a;
+		if (!a)
+			break;
+	}
+	va_end(ap);
+	av[63] = 0;
+	return execvpe(f, av, (char *const *)environ);
 }
 
 #ifdef __x86_64__
