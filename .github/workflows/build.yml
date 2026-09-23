@@ -91,7 +91,7 @@ jobs:
           echo "eval-test: type=[${SOURCE_TYPE-unset}] urlbin=[${RECIPE_URL_BIN-unset}]"
           python3 builder/parse-recipe.py packages/yt-dlp | cat -A | head -n20
           eval "EA=''; EB='x'"; echo "mini-eval: [${EA-unset}] [${EB-unset}]"
-          python3 builder/parse-recipe.py packages/yt-dlp | cat -n
+          python3 builder/parse-recipe.py packages/yt-dlp | sed -n '4p;5p' | od -c | head -n12
           env | grep -iE '^(ENV|BASH_ENV|SHELLOPTS|POSIXLY|GITHUB_)' | head -n20
           eval "$(python3 builder/parse-recipe.py packages/yt-dlp | head -n 4)"
           echo "eval4: urlbin=[${RECIPE_URL_BIN-unset}]"
