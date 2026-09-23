@@ -89,6 +89,8 @@ jobs:
           python3 builder/parse-recipe.py packages/opencode
           eval "$(python3 builder/parse-recipe.py packages/yt-dlp)"
           echo "eval-test: type=[${SOURCE_TYPE-unset}] urlbin=[${RECIPE_URL_BIN-unset}]"
+          python3 builder/parse-recipe.py packages/yt-dlp | cat -A | head -n20
+          eval "EA=''; EB='x'"; echo "mini-eval: [${EA-unset}] [${EB-unset}]"
 
       - name: Build AppImage
         run: sh builder/build.sh ${{ matrix.pkg.dir }}
