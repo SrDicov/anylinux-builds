@@ -26,6 +26,16 @@ Cloud builder for sharun-based AppImages. One generic pipeline, N declarative re
   copy); always validate the AppImage on a clean machine.
 - Chromium apps: zygote sandbox dies inside the image (FATAL goodbye);
   bake `app_env: [ELECTRON_DISABLE_SANDBOX=1]` (verified working).
+- `extra_paths` deploys ELFs + closures only, NEVER plain data: if the app
+  needs files next to the binary (bootstrap tarballs, helper scripts),
+  pair it with `data_from` pointing at the same dir (verified: missing
+  files pass CI when the build machine has them installed — absolute-path
+  leak; always validate on a clean machine).
+- 32-bit apps: quick-sharun auto-detects LIB32 and stages drivers under
+  `AppDir/lib/32` (not `lib32/`); runtime-downloaded 32-bit binaries need
+  an explicit loader fallback (Valve's `/lib/ld-linux.so.2`), and musl
+  hosts need a bwrap sandbox injecting both loaders (covers 64-bit
+  grandchildren like CEF helpers).
 - Chromium dlopens its GL stack + ffmpeg from the exe dir (never deployed
   by quick-sharun): use `runtime_from: /opt/<app>` or the GPU process dies
   and no frame is ever presented (app runs headless, no window).
