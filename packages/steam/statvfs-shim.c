@@ -368,6 +368,23 @@ static long raw_execve(const char *p, char *const *a, char *const *e) {
 #endif
 	return r;
 }
+/* errno for freestanding interposers (both glibc and musl provide
+ * __errno_location): without it callers keep stale errno and print
+ * confusing messages like "No error information". */
+extern int *__errno_location(void);
+static void set_err(long r) {
+	int *p;
+	if (r >= 0 || r <= -4096)
+		return;
+	p = __errno_location();
+	if (p)
+		*p = (int)-r;
+}
+static long err_execve(const char *p, char *const *a, char *const *e) {
+	long r = raw_execve(p, a, e);
+	set_err(r);
+	return -1;
+}
 /* Verbose: log a rerouted exec (capped path). */
 static void dbg_route(const char *p, const char *ld) {
 	static const char pre[] = "steam-shim: routed exec ";
@@ -550,11 +567,11 @@ static long route_exec(const char *path, char *const *argv, char *const *envp,
 	const char *ld, *libs, *oldlp;
 	unsigned long i, n = 0, m = 0, l;
 	if (!argv || !envp)
-		return raw_execve(path, argv, (char *const *)envp);
+		return err_execve(path, argv, (char *const *)envp);
 	ld = r_getenv(is64 ? "STEAM_IMG_LD64" : "STEAM_IMG_LD32");
 	libs = r_getenv("STEAM_IMG_LIBS");
 	if (!ld || !*ld || !libs || !*libs)
-		return raw_execve(path, argv, (char *const *)envp);
+		return err_execve(path, argv, (char *const *)envp);
 	nargv[n++] = (char *)ld;
 	nargv[n++] = (char *)"--library-path";
 	/* Loader search path: image libs, then scout triplet dirs next to the
@@ -603,7 +620,7 @@ static long route_exec(const char *path, char *const *argv, char *const *envp,
 	for (i = 1; argv[i] && n < 127; i++)
 		nargv[n++] = argv[i];
 	if (argv[i])
-		return raw_execve(path, argv, (char *const *)envp);
+		return err_execve(path, argv, (char *const *)envp);
 	nargv[n] = 0;
 	oldlp = r_getenv("LD_LIBRARY_PATH");
 	/* Valve precedence first: keep inherited paths verbatim, then scout
@@ -665,7 +682,7 @@ static long route_exec(const char *path, char *const *argv, char *const *envp,
 		if (r_strneq(envp[i], "LD_LIBRARY_PATH=", 16))
 			continue;
 		if (n >= 297)
-			return raw_execve(path, argv, (char *const *)envp);
+			return err_execve(path, argv, (char *const *)envp);
 		nenvp[n++] = envp[i];
 	}
 	/* nenvp tail: fresh LD_LIBRARY_PATH entry (replaces any inherited). */
@@ -701,14 +718,14 @@ static long route_exec(const char *path, char *const *argv, char *const *envp,
 			break;
 		ld += dl + 1;
 	}
-	return raw_execve(path, argv, (char *const *)envp);
+	return err_execve(path, argv, (char *const *)envp);
 }
 int execve(const char *path, char *const argv[], char *const envp[]) {
 	int is64 = 0;
 	if (!envp)
 		envp = (char *const *)environ;
 	if (!path || !needs_router(path, &is64))
-		return raw_execve(path, argv, (char *const *)envp);
+		return err_execve(path, argv, (char *const *)envp);
 	return route_exec(path, argv, envp, is64);
 }
 /* exec family -> our execve (covers fork+exec users; posix_spawn is rare
@@ -719,7 +736,7 @@ int execv(const char *p, char *const a[]) {
 int execvpe(const char *f, char *const a[], char *const e[]) {
 	unsigned long i;
 	if (!f)
-		return raw_execve(f, a, (char *const *)e);
+		return err_execve(f, a, (char *const *)e);
 	for (i = 0; f[i]; i++)
 		if (f[i] == '/')
 			return execve(f, a, e);
@@ -747,7 +764,7 @@ int execvpe(const char *f, char *const a[], char *const e[]) {
 			while (f[fl])
 				fl++;
 			if (dl + 1 + fl >= sizeof(cand))
-				return raw_execve(f, a, (char *const *)e);
+				return err_execve(f, a, (char *const *)e);
 			for (k = 0; k < dl; k++)
 				cand[c++] = pe[k];
 			cand[c++] = '/';
@@ -768,7 +785,7 @@ int execvpe(const char *f, char *const a[], char *const e[]) {
 			pe += dl + 1;
 		}
 	}
-	return raw_execve(f, a, (char *const *)e);
+	return err_execve(f, a, (char *const *)e);
 }
 int execvp(const char *f, char *const a[]) {
 	return execvpe(f, a, (char *const *)environ);
