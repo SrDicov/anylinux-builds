@@ -14,7 +14,8 @@ eval "$(python3 "$BUILDER_DIR/parse-recipe.py" "$RECIPE_DIR")"
 : "${SOURCE_PKG:=}" "${SOURCE_URL:=}" "${SOURCE_URL_BIN:=}" "${SOURCE_REPO:=}" \
 	"${SOURCE_REF:=}" "${SOURCE_URL_VERSION:=}" "${RECIPE_MAIN_BIN:=}" \
 	"${RECIPE_BUILD_DEPS:=}" "${RECIPE_DEBLOAT:=common}" "${RECIPE_HOOKS:=}" \
-	"${RECIPE_TEST_ARGS:=}" "${RECIPE_BUILD_OUT:=}" "${RECIPE_HOST_DRIVERS:=0}"
+	"${RECIPE_TEST_ARGS:=}" "${RECIPE_BUILD_OUT:=}" "${RECIPE_DATA_FROM:=}" \
+	"${RECIPE_HOST_DRIVERS:=0}"
 
 ARCH="$(uname -m)"
 export ICON="$RECIPE_ICON"
@@ -112,6 +113,29 @@ echo "=== bundling AppImage ==="
 wget --retry-connrefused --tries=30 "$QUICK_SHARUN_URL" -O ./quick-sharun
 chmod +x ./quick-sharun
 ./quick-sharun "$RECIPE_BIN"
+
+if [ -n "$RECIPE_DATA_FROM" ]; then
+	# Apps like Electron keep runtime DATA next to the binary
+	# (icudtl.dat, *.pak, locales/, app.asar). quick-sharun deploys
+	# libs/bins only, so stage data files beside the deployed
+	# binary launchers. Never ELFs/*.so: those are already deployed
+	# and raw copies would shadow the bundled ones.
+	[ -d "$RECIPE_DATA_FROM" ] || {
+		echo "ERROR: data_from '$RECIPE_DATA_FROM' not found" >&2
+		exit 1
+	}
+	command -v file >/dev/null 2>&1 || pacman -S --noconfirm file
+	APPDIR_BIN="${APPDIR:-$PWD/AppDir}/bin"
+	(cd "$RECIPE_DATA_FROM" && find . -type f ! -name '*.so*') |
+		while IFS= read -r f; do
+			f="${f#./}"
+			if file "$RECIPE_DATA_FROM/$f" | grep -q ELF; then
+				continue
+			fi
+			mkdir -p "$APPDIR_BIN/$(dirname "$f")"
+			cp -L "$RECIPE_DATA_FROM/$f" "$APPDIR_BIN/$f"
+		done
+fi
 
 ./quick-sharun --make-appimage
 

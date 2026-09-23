@@ -16,5 +16,8 @@ build_deps: []
 debloat: mesa
 hooks: [fix-namespaces.hook]
 host_drivers: false
+# Electron runtime data (icudtl.dat, *.pak, locales/, app.asar) must sit
+# next to the binary; quick-sharun only deploys libs/bins.
+data_from: /opt/vesktop
 # Exits immediately in CI (no usable display/sandbox): direct smoke test.
 test_args: [--version]

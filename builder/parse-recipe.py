@@ -33,6 +33,7 @@ def main():
         "RECIPE_DEBLOAT": data.get("debloat", "common"),
         "RECIPE_HOOKS": ":".join(data.get("hooks", []) or []),
         "RECIPE_TEST_ARGS": " ".join(data.get("test_args", []) or []),
+        "RECIPE_DATA_FROM": data.get("data_from", ""),
         "RECIPE_BUILD_OUT": data.get("build_out", ""),
         "RECIPE_HOST_DRIVERS": "1"
         if str(data.get("host_drivers", "false")).lower() in ("1", "true", "yes")
