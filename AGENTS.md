@@ -16,7 +16,8 @@ Cloud builder for sharun-based AppImages. One generic pipeline, N declarative re
 - Install to `/usr` first, pass binaries to quick-sharun. Never copy libs manually; never touch `$APPDIR/shared`; never strip bundled libs.
 - Ignore linuxdeploy/AppImageKit/appimage-builder guidance — wrong for this model.
 - AUR builds run as non-root user (`makepkg` forbids root); official pkgs as root.
-- `url` sources (v1): single executable binary only, needs `main_bin`.
+- `url` sources: single binary, or archive (needs `url_bin` inner path).
+  Needs `main_bin`.
 - `git` sources: shallow-clone ref, run `build_run` lines in it, install
   `build_out` to `/usr/bin/$MAIN_BIN`. Version = ls-remote SHA.
 - If the app's launcher is a wrapper script with an absolute `exec /opt/...`,

@@ -61,9 +61,26 @@ aur)
 	su builder -c "cd /tmp/aur-build/$SOURCE_PKG && makepkg -si --noconfirm"
 	;;
 url)
-	# v1 contract: the URL is a single executable binary.
-	wget --retry-connrefused --tries=30 "$SOURCE_URL" -O /tmp/payload-bin
-	install -Dm755 /tmp/payload-bin "/usr/bin/$RECIPE_MAIN_BIN"
+	case "$SOURCE_URL" in
+	*.tar.gz | *.tgz | *.tar.xz | *.tar.zst | *.zip)
+		# Archive holding the binary: extract, install inner path.
+		[ -n "$RECIPE_URL_BIN" ] || {
+			echo "ERROR: url_bin required for archive URLs" >&2
+			exit 1
+		}
+		command -v bsdtar >/dev/null 2>&1 || pacman -S --noconfirm libarchive
+		rm -rf /tmp/payload-dl /tmp/payload-ex
+		mkdir -p /tmp/payload-ex
+		wget --retry-connrefused --tries=30 "$SOURCE_URL" -O /tmp/payload-dl
+		bsdtar -xf /tmp/payload-dl -C /tmp/payload-ex
+		install -Dm755 "/tmp/payload-ex/$RECIPE_URL_BIN" "/usr/bin/$RECIPE_MAIN_BIN"
+		;;
+	*)
+		# Single executable binary.
+		wget --retry-connrefused --tries=30 "$SOURCE_URL" -O /tmp/payload-bin
+		install -Dm755 /tmp/payload-bin "/usr/bin/$RECIPE_MAIN_BIN"
+		;;
+	esac
 	;;
 git)
 	# Clone the ref and run the recipe's own build lines inside it;

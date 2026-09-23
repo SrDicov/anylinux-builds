@@ -1,21 +1,18 @@
-# opencode estable (anomalyco fork, rama dev == linea v1.x):
-# compilado desde fuente con Bun, target baseline (sin AVX2).
+# opencode estable (anomalyco fork, linea v1.x): binario precompilado
+# baseline del release latest (sin AVX2, corre en cualquier x86_64).
+# url_version sigue el tag latest; el tarball trae el binario suelto.
 name: opencode
 source:
-  type: git
-  repo: https://github.com/anomalyco/opencode.git
-  ref: dev
+  type: url
+  url: https://github.com/anomalyco/opencode/releases/latest/download/opencode-linux-x64-baseline.tar.gz
+  url_version: github:anomalyco/opencode
+  url_bin: opencode
 bin: /usr/bin/opencode
 icon: DUMMY
 desktop: DUMMY
 main_bin: opencode
-build_deps: [bun]
+build_deps: []
 debloat: none
 hooks: []
 host_drivers: false
 test_args: [--version]
-build_out: packages/cli/dist/cli-linux-x64-baseline/bin/opencode
-build_run:
-  - bun install
-  - cd packages/cli
-  - bun run script/build.ts --single --baseline

@@ -18,7 +18,9 @@ Then trigger it once manually: *Actions → Daily builds → Run workflow*
 with `package = myapp`. The daily cron picks it up from then on.
 
 `package.yml` fields: `name`, `source.type` (`pacman`|`aur`|`url`|`git`),
-`source.pkg` or `source.url` (+`url_version: github:owner/repo`|`etag`)
+`source.pkg` or `source.url` (+`url_version: github:owner/repo`|`etag`;
+archives `.tar.gz/.tgz/.tar.xz/.tar.zst/.zip` need `url_bin`, the inner
+binary path)
 or `source.repo`+`ref` for git (built from source; needs `build_out` +
 `build_run` lines),
 `bin`, `icon`/`desktop` (real `/usr` paths or `DUMMY` + `main_bin`),

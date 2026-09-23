@@ -116,6 +116,11 @@ def load_recipe(path):
         raise ValueError(f"{path}: source.pkg required for pacman|aur")
     if src["type"] == "url" and not src.get("url"):
         raise ValueError(f"{path}: source.url required for url")
+    if src["type"] == "url" and src.get("url", "").endswith(
+        (".tar.gz", ".tgz", ".tar.xz", ".tar.zst", ".zip")
+    ):
+        if not src.get("url_bin"):
+            raise ValueError(f"{path}: source.url_bin required for archive URLs")
     if src["type"] == "git":
         if not src.get("repo") or not src.get("ref"):
             raise ValueError(f"{path}: source.repo+ref required for git")
