@@ -18,9 +18,9 @@ Then trigger it once manually: *Actions → Daily builds → Run workflow*
 with `package = myapp`. The daily cron picks it up from then on.
 
 `package.yml` fields: `name`, `source.type` (`pacman`|`aur`|`url`|`git`),
-`source.pkg` or `source.url` (+`url_version: github:owner/repo`|`etag`;
-archives `.tar.gz/.tgz/.tar.xz/.tar.zst/.zip` need `url_bin`, the inner
-binary path)
+`source.pkg` or `source.url` (+`url_version`: `github:owner/repo`, ETag, or
+`apt <Packages-url> <pkg>` for `.deb` repos; archives need `url_bin`, the
+inner binary path; `.deb` is unpacked to `/` and needs no `main_bin`)
 or `source.repo`+`ref` for git (built from source; needs `build_out` +
 `build_run` lines),
 `bin`, `icon`/`desktop` (real `/usr` paths or `DUMMY` + `main_bin`),
@@ -28,6 +28,7 @@ or `source.repo`+`ref` for git (built from source; needs `build_out` +
 `hooks` (e.g. `[fix-namespaces.hook]`), `host_drivers` (GTK/Qt only),
 `test_args` (optional: e.g. `[--version]` — direct smoke test for CLIs/TUIs
 that can't stay alive 12s under `--test`),
+`patch_run` (optional: shell lines after install, before bundling),
 `extra_paths` (optional: extra dirs whose `.so`/binaries get deployed),
 `data_from` (optional: dir of runtime DATA copied next to the binary —
 Electron `icudtl.dat`/`*.pak`/`locales`/`app.asar`; never ELFs),

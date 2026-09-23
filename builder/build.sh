@@ -27,6 +27,11 @@ export OUTNAME="$RECIPE_NAME-$ARCH.AppImage"
 [ "$RECIPE_HOST_DRIVERS" = 1 ] && export USE_HOST_DRIVERS_EXPERIMENTAL=1
 
 echo "=== installing base build deps ==="
+if ! grep -q '^\[multilib\]' /etc/pacman.conf; then
+	# Steam-style 32-bit stacks need multilib (harmless when unused).
+	sed -i '/^#\[multilib\]/,/^#Include/ s/^#//' /etc/pacman.conf
+	pacman -Sy
+fi
 pacman -Syu --noconfirm \
 	base-devel git patchelf wget xorg-server-xvfb python3 \
 	$RECIPE_BUILD_DEPS
@@ -81,6 +86,16 @@ url)
 		bsdtar -xf /tmp/payload-dl -C /tmp/payload-ex
 		install -Dm755 "/tmp/payload-ex/$RECIPE_URL_BIN" "/usr/bin/$RECIPE_MAIN_BIN"
 		;;
+	*.deb)
+		# Debian package (e.g. Valve's steam.deb): unpack the inner
+		# data.tar payload to / for bundling.
+		command -v bsdtar >/dev/null 2>&1 || pacman -S --noconfirm libarchive
+		rm -rf /tmp/payload-dl /tmp/deb-ex
+		mkdir -p /tmp/deb-ex
+		wget --retry-connrefused --tries=30 "$SOURCE_URL" -O /tmp/payload-dl
+		bsdtar -xf /tmp/payload-dl -C /tmp/deb-ex 'data.tar*'
+		bsdtar -xf /tmp/deb-ex/data.tar.* -C /
+		;;
 	*)
 		# Single executable binary.
 		wget --retry-connrefused --tries=30 "$SOURCE_URL" -O /tmp/payload-bin
@@ -110,6 +125,19 @@ PYEOF
 esac
 
 echo "=== bundling AppImage ==="
+# Recipe-owned post-install patches (e.g. allow root for CI smoke tests,
+# loader fallbacks). Runs after install, before bundling.
+python3 - "$RECIPE_DIR" > /tmp/patch-run.sh <<'PYEOF'
+import sys
+sys.path.insert(0, 'builder')
+from recipe import load_recipe
+data = load_recipe(sys.argv[1] + '/package.yml')
+sys.stdout.write('\n'.join(data.get('patch_run', []) or []) + '\n')
+PYEOF
+if [ -s /tmp/patch-run.sh ]; then
+	echo "=== applying recipe patches ==="
+	sh /tmp/patch-run.sh
+fi
 wget --retry-connrefused --tries=30 "$QUICK_SHARUN_URL" -O ./quick-sharun
 chmod +x ./quick-sharun
 # shellcheck disable=SC2086

@@ -1,0 +1,27 @@
+# Steam (Valve). Fuente: .deb OFICIAL de Valve (repo.steampowered.com via
+# la URL estable de steam.deb) = cero dias de reempaquetado; ademas el
+# cliente se auto-actualiza al arrancar.
+# OJO: /usr/bin/steam es un symlink a ../lib/steam/bin_steam.sh; se
+# empaqueta el script REAL (leccion vesktop: nada de rutas absolutas).
+# El cliente real (ELF 32-bit, INTERP /lib/ld-linux.so.2) llega en RUNTIME
+# via bootstrap (~/.steam): patch_run inyecta fallback al loader lib32
+# empaquetado cuando el host no tiene multilib (musl, etc).
+name: steam
+source:
+  type: url
+  url: https://cdn.akamai.steamstatic.com/client/installer/steam.deb
+  url_version: apt http://repo.steampowered.com/steam/dists/stable/steam/binary-amd64/Packages steam-launcher
+bin: /usr/lib/steam/bin_steam.sh
+# /usr/lib/steam: lanzador + bootstraplinux tarball + steam_launcher py.
+# /usr/lib32: stack 32-bit completo (quick-sharun lo detecta como LIB32 y
+# empaqueta drivers; el cliente 32-bit y Proton lo necesitan).
+extra_paths: [/usr/lib/steam, /usr/lib32]
+icon: /usr/share/pixmaps/steam.png
+desktop: /usr/share/applications/steam.desktop
+build_deps: [curl, dbus, freetype2, gdk-pixbuf2, nss, lsof, usbutils, xdg-user-dirs, xorg-xrandr, xz, zenity, python, ttf-dejavu, xterm, lsb-release, pipewire, libpulse, libva, atk, at-spi2-core, libcups, alsa-lib, libdrm, mesa, vulkan-radeon, vulkan-intel, vulkan-nouveau, egl-wayland, vkd3d, mangohud, gamescope, gamemode, lib32-glibc, lib32-gcc-libs, lib32-libx11, lib32-libxss, lib32-libxinerama, lib32-libxcrypt, lib32-libxcrypt-compat, lib32-libgpg-error, lib32-libnm, lib32-libva, lib32-nss, lib32-alsa-plugins, lib32-fontconfig, lib32-libglvnd, lib32-systemd, lib32-pipewire, lib32-vulkan-icd-loader, lib32-vulkan-radeon, lib32-vulkan-intel, lib32-vulkan-nouveau, lib32-mesa, lib32-vkd3d, lib32-mangohud, lib32-freetype2, lib32-libpulse, lib32-gamemode]
+debloat: mesa
+hooks: [fix-namespaces.hook]
+host_drivers: false
+patch_run:
+  - python3 -c 'p="/usr/lib/steam/bin_steam.sh"; s=open(p).read(); old="\"$(id -u)\" == \"0\""; assert s.count(old)==1; open(p,"w").write(s.replace(old,"\"$(id -u)\" == \"69\""))'
+  - python3 -c 'p="/usr/lib/steam/bin_steam.sh"; s=open(p).read(); old="exec \"$LAUNCHSTEAMDIR/$STEAMBOOTSTRAP\""; assert s.count(old)==1; new="if [ ! -e /lib/ld-linux.so.2 ]; then\n_shdir=\"$(dirname \"$(readlink -f \"$0\")\")\"\nfor _bl in \"$_shdir/../lib32/ld-linux.so.2\" \"$_shdir/lib32/ld-linux.so.2\"; do\nif [ -x \"$_bl\" ]; then exec \"$_bl\" --library-path \"$_shdir/../lib32:$_shdir/lib32\" \"$LAUNCHSTEAMDIR/$STEAMBOOTSTRAP\" ${log_opened+-srt-logger-opened} \"$@\"\nfi\ndone\nfi\n"+old; open(p,"w").write(s.replace(old,new))'

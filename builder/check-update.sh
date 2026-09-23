@@ -41,6 +41,16 @@ url)
 			_http_fingerprint "$SOURCE_URL" # API rate-limited: degrade to ETag
 		fi
 		;;
+	apt\ *)
+		# apt <Packages-url> <pkg>: version of a .deb repo package
+		# (e.g. Valve's steam repo). Epoch prefix stripped.
+		spec="${SOURCE_URL_VERSION#apt }"
+		pkg="${spec##* }"
+		packages_url="${spec% *}"
+		curl -fsSL --max-time 60 "$packages_url" | awk -v pkg="$pkg" '
+			$1 == "Package:" && $2 == pkg {found=1}
+			found && $1 == "Version:" {print $2; exit}' | sed 's/^[0-9]*://'
+		;;
 	*)
 		_http_fingerprint "$SOURCE_URL"
 		;;

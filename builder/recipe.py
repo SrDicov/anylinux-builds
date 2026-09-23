@@ -9,7 +9,7 @@ block `- item` lists, true/false booleans. Exits non-zero on error.
 import sys
 
 
-LIST_KEYS = ("build_deps", "hooks", "test_args", "build_run", "extra_paths", "app_env")
+LIST_KEYS = ("build_deps", "hooks", "test_args", "build_run", "extra_paths", "app_env", "patch_run")
 
 
 def parse(text):
@@ -43,6 +43,7 @@ def parse(text):
             "hooks",
             "test_args",
             "build_run",
+            "patch_run",
         ):
             continue  # collected by the block-list rescan below
         elif current is not None:
@@ -109,6 +110,7 @@ def load_recipe(path):
     data.setdefault("build_out", "")
     data.setdefault("extra_paths", [])
     data.setdefault("app_env", [])
+    data.setdefault("patch_run", [])
     data.setdefault("runtime_from", "")
     data.setdefault("debloat", "common")
     data.setdefault("host_drivers", "false")
@@ -137,7 +139,8 @@ def load_recipe(path):
     if data["desktop"] == "DUMMY" and "main_bin" not in data:
         raise ValueError(f"{path}: main_bin required when desktop is DUMMY")
     if src["type"] == "url" and "main_bin" not in data:
-        raise ValueError(f"{path}: main_bin required for url (install target)")
+        if not src.get("url", "").endswith(".deb"):
+            raise ValueError(f"{path}: main_bin required for url (install target)")
     return data
 
 
