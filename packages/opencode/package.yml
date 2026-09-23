@@ -14,7 +14,7 @@ debloat: none
 hooks: []
 host_drivers: false
 test_args: [--version]
-build_out: packages/cli/dist/opencode-linux-x64-baseline/bin/opencode
+build_out: packages/cli/dist/cli-linux-x64-baseline/bin/opencode
 build_run:
   - bun install
   - cd packages/cli
