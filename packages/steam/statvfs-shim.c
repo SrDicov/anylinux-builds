@@ -10,6 +10,7 @@ typedef __UINT64_TYPE__ u64;
 
 #ifdef __x86_64__
 #define SYS_statfs 137
+#define SYS_fstatfs 100
 #define SYS_openat 257
 #define SYS_read 0
 #define SYS_write 1
@@ -20,6 +21,14 @@ static long raw_statfs(const char *p, void *b) {
 	__asm__ volatile ("syscall"
 		: "=a" (r)
 		: "a" ((long)SYS_statfs), "D" ((long)p), "S" ((long)b)
+		: "rcx", "r11", "memory");
+	return r;
+}
+static long raw_fstatfs(long fd, void *b) {
+	long r;
+	__asm__ volatile ("syscall"
+		: "=a" (r)
+		: "a" ((long)SYS_fstatfs), "D" (fd), "S" ((long)b)
 		: "rcx", "r11", "memory");
 	return r;
 }
@@ -49,6 +58,7 @@ static long raw_close(long fd) {
 }
 #else
 #define SYS_statfs64 268
+#define SYS_fstatfs64 269
 #define SYS_open 5
 #define SYS_read 3
 #define SYS_write 4
@@ -58,6 +68,14 @@ static long raw_statfs(const char *p, void *b) {
 	__asm__ volatile ("int $0x80"
 		: "=a" (r)
 		: "a" ((long)SYS_statfs64), "b" ((long)p), "c" ((long)b)
+		: "memory");
+	return r;
+}
+static long raw_fstatfs(long fd, void *b) {
+	long r;
+	__asm__ volatile ("int $0x80"
+		: "=a" (r)
+		: "a" ((long)SYS_fstatfs64), "b" (fd), "c" ((long)b)
 		: "memory");
 	return r;
 }
@@ -371,17 +389,53 @@ static void maybe_fake(struct vfs *o) {
 	o->bavail = want;
 	dbg_fake();
 }
+/* Last resort: kernel refused statfs AND fstatfs (broken compat), but the
+ * path exists (open worked) and we run inside the image: report 8GB. */
+static void fill_synth(struct vfs *o) {
+	u64 want = (8ull * 1024 * 1024 * 1024) / 4096u;
+	o->bsize = 4096;
+	o->frsize = 4096;
+	o->blocks = want;
+	o->bfree = want;
+	o->bavail = want;
+	o->files = 1000000;
+	o->ffree = 1000000;
+	o->favail = 1000000;
+	o->fsid = 0;
+	o->__pad = 0;
+	o->flag = 0;
+	o->namemax = 255;
+	o->spare[0] = 0; o->spare[1] = 0; o->spare[2] = 0;
+	o->spare[3] = 0; o->spare[4] = 0; o->spare[5] = 0;
+}
 int statvfs(const char *p, struct vfs *o) {
 	struct kbuf {
 		u64 w[15];
 	} kb;
-	long r;
+	long r, fd;
 	dbg_call(p);
 	r = raw_statfs(p, &kb);
-	if (r < 0)
+	if (r == 0) {
+		fill_vfs(o, kb.w);
+		maybe_fake(o);
+		return 0;
+	}
+	/* statfs failed: missing path (open fails) -> -1 as before; kernel
+	 * quirk (open ok, statfs broken) -> real data via fd or synthesize. */
+	fd = raw_open(p);
+	if (fd < 0)
 		return -1;
-	fill_vfs(o, kb.w);
-	maybe_fake(o);
+	r = raw_fstatfs(fd, &kb);
+	raw_close(fd);
+	if (r == 0) {
+		fill_vfs(o, kb.w);
+		maybe_fake(o);
+		return 0;
+	}
+	if (!want_fake())
+		return -1;
+	fill_synth(o);
+	dbg_fake();
 	return 0;
 }
 int statvfs64(const char *p, struct vfs *o) {
@@ -422,7 +476,9 @@ static void fill_vfs64(struct vfs64 *o, const char *kb) {
 	o->spare[3] = 0; o->spare[4] = 0; o->spare[5] = 0;
 }
 static void maybe_fake64(struct vfs64 *o) {
+	/* 8GB in fs-blocks, without 64-bit division (no libgcc freestanding). */
 	u64 want;
+	u32 fs = o->frsize ? o->frsize : 4096u;
 	if ((o->flag & 1u) != 1u || o->bavail != 0) {
 		dbg_skip(0);
 		return;
@@ -431,12 +487,39 @@ static void maybe_fake64(struct vfs64 *o) {
 		dbg_skip(1);
 		return;
 	}
-	want = (8ull * 1024 * 1024 * 1024) / (o->frsize ? o->frsize : 4096u);
+	if (fs == 1024)
+		want = 8388608ull;
+	else if (fs == 2048)
+		want = 4194304ull;
+	else if (fs == 8192)
+		want = 1048576ull;
+	else if (fs == 512)
+		want = 16777216ull;
+	else
+		want = 2097152ull; /* 4096 and oddballs */
 	if (o->blocks < want)
 		o->blocks = want;
 	o->bfree = want;
 	o->bavail = want;
 	dbg_fake();
+}
+/* Last resort: kernel refused statfs64 AND fstatfs64 (broken compat), but
+ * the path exists (open worked) and we run inside the image: report 8GB. */
+static void fill_synth64(struct vfs64 *o) {
+	u64 want = (8ull * 1024 * 1024 * 1024) / 4096u;
+	o->bsize = 4096;
+	o->frsize = 4096;
+	o->blocks = want;
+	o->bfree = want;
+	o->bavail = want;
+	o->files = 1000000;
+	o->ffree = 1000000;
+	o->favail = 1000000;
+	o->fsid = 0;
+	o->flag = 0;
+	o->namemax = 255;
+	o->spare[0] = 0; o->spare[1] = 0; o->spare[2] = 0;
+	o->spare[3] = 0; o->spare[4] = 0; o->spare[5] = 0;
 }
 /* i386 libc struct statvfs (32-bit fields, may truncate): convert. */
 struct vfs32 {
@@ -454,13 +537,30 @@ static void fill_vfs32(struct vfs32 *o, const struct vfs64 *t) {
 }
 int statvfs64(const char *p, struct vfs64 *o) {
 	char kb[84];
-	long r;
+	long r, fd;
 	dbg_call(p);
 	r = raw_statfs(p, kb);
-	if (r < 0)
+	if (r == 0) {
+		fill_vfs64(o, kb);
+		maybe_fake64(o);
+		return 0;
+	}
+	/* statfs64 failed: missing path (open fails) -> -1 as before; kernel
+	 * quirk (open ok, statfs broken) -> real data via fd or synthesize. */
+	fd = raw_open(p);
+	if (fd < 0)
 		return -1;
-	fill_vfs64(o, kb);
-	maybe_fake64(o);
+	r = raw_fstatfs(fd, kb);
+	raw_close(fd);
+	if (r == 0) {
+		fill_vfs64(o, kb);
+		maybe_fake64(o);
+		return 0;
+	}
+	if (!want_fake())
+		return -1;
+	fill_synth64(o);
+	dbg_fake();
 	return 0;
 }
 int statvfs(const char *p, struct vfs32 *o) {
