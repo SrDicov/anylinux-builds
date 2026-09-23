@@ -99,9 +99,9 @@ static int streq_n(const char *a, const char *b, unsigned long n) {
 static int want_fake(void) {
 	static int cached = -1;
 	static const char key[] = "STEAM_IMG_ROOT=";
-	char buf[4096];
+	char buf[4096 + 15];
 	long fd, r, i;
-	unsigned long u;
+	unsigned long u, off = 0;
 	if (cached != -1)
 		return cached;
 	cached = 0;
@@ -115,10 +115,11 @@ static int want_fake(void) {
 #else
 			SYS_read,
 #endif
-			fd, buf, sizeof(buf));
+			fd, buf + off, sizeof(buf) - off);
 		if (r <= 0)
 			break;
-		for (i = 0, u = (unsigned long)r; i + 15 < u; i++) {
+		u = off + (unsigned long)r;
+		for (i = 0; i + 15 < u; i++) {
 			if (streq_n(buf + i, key, 15)) {
 				cached = 1;
 				break;
@@ -126,6 +127,13 @@ static int want_fake(void) {
 		}
 		if (cached)
 			break;
+		/* Carry up to 15 bytes so keys split across reads still match. */
+		off = u > 15 ? 15 : u;
+		{
+			unsigned long j;
+			for (j = 0; j < off; j++)
+				buf[j] = buf[u - off + j];
+		}
 	}
 	raw_close(fd);
 	return cached;
@@ -135,28 +143,39 @@ static int want_fake(void) {
 static int debug_on(void) {
 	static int cached = -1;
 	static const char key[] = "STEAM_SHIM_DEBUG=";
-	char buf[1024];
+	char buf[1024 + 17];
 	long fd, r, i;
-	unsigned long u;
+	unsigned long u, off = 0;
 	if (cached != -1)
 		return cached;
 	cached = 0;
 	fd = raw_open("/proc/self/environ");
 	if (fd < 0)
 		return 0;
-	r = raw_rw(
+	for (;;) {
+		r = raw_rw(
 #ifdef __x86_64__
-		SYS_read,
+			SYS_read,
 #else
-		SYS_read,
+			SYS_read,
 #endif
-		fd, buf, sizeof(buf));
-	if (r > 0) {
-		for (i = 0, u = (unsigned long)r; i + 18 < u; i++) {
+			fd, buf + off, sizeof(buf) - off);
+		if (r <= 0)
+			break;
+		u = off + (unsigned long)r;
+		for (i = 0; i + 18 < u; i++) {
 			if (streq_n(buf + i, key, 17)) {
 				cached = 1;
 				break;
 			}
+		}
+		if (cached || u < sizeof(buf))
+			break;
+		off = 17;
+		{
+			unsigned long j;
+			for (j = 0; j < off; j++)
+				buf[j] = buf[u - off + j];
 		}
 	}
 	raw_close(fd);
@@ -176,6 +195,38 @@ static void dbg_fake(void) {
 			SYS_write,
 #endif
 			2, m, n);
+}
+
+/* Verbose: log every intercepted path (capped). */
+static void dbg_path(const char *p) {
+	static const char pre[] = "steam-shim: statvfs ";
+	unsigned long n = 0;
+	if (!debug_on())
+		return;
+	raw_rw(
+#ifdef __x86_64__
+		SYS_write,
+#else
+		SYS_write,
+#endif
+		2, pre, sizeof(pre) - 1);
+	while (n < 200 && p[n])
+		n++;
+	if (n)
+		raw_rw(
+#ifdef __x86_64__
+			SYS_write,
+#else
+			SYS_write,
+#endif
+			2, p, n);
+	raw_rw(
+#ifdef __x86_64__
+		SYS_write,
+#else
+		SYS_write,
+#endif
+		2, "\n", 1);
 }
 
 #ifdef __x86_64__
@@ -223,7 +274,9 @@ int statvfs(const char *p, struct vfs *o) {
 	struct kbuf {
 		u64 w[15];
 	} kb;
-	long r = raw_statfs(p, &kb);
+	long r;
+	dbg_path(p);
+	r = raw_statfs(p, &kb);
 	if (r < 0)
 		return -1;
 	fill_vfs(o, kb.w);
@@ -296,7 +349,9 @@ static void fill_vfs32(struct vfs32 *o, const struct vfs64 *t) {
 }
 int statvfs64(const char *p, struct vfs64 *o) {
 	char kb[84];
-	long r = raw_statfs(p, kb);
+	long r;
+	dbg_path(p);
+	r = raw_statfs(p, kb);
 	if (r < 0)
 		return -1;
 	fill_vfs64(o, kb);
