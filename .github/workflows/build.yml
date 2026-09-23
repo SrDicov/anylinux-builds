@@ -57,6 +57,7 @@ jobs:
             CHANGED=""
           fi
           # shellcheck disable=SC2086
+          echo "CHANGED_PACKAGES=$CHANGED"
           if [ -n "$CHANGED" ]; then
             python3 builder/discover.py $ARGS --force-include "$CHANGED"
           else

@@ -1,5 +1,7 @@
 # concord: TUI client for Discord. AUR -bin repackages the upstream
 # release binary (no compilation). Single binary, no wrapper.
+# Voice/video needs pipewire+libva+mesa present so ldd resolves;
+# debloat swaps distro mesa for the small pkgforge build.
 name: concord
 source:
   type: aur
@@ -8,8 +10,8 @@ bin: /usr/bin/concord
 icon: DUMMY
 desktop: DUMMY
 main_bin: concord
-build_deps: []
-debloat: none
+build_deps: [libva, pipewire]
+debloat: mesa
 hooks: []
 host_drivers: false
 test_args: [--version]
