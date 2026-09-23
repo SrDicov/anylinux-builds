@@ -87,6 +87,8 @@ jobs:
           sh -c 'set -u; : "${FORENSIC_TEST:=assigned-ok}"; echo "forensic: $FORENSIC_TEST"'
           md5sum builder/parse-recipe.py builder/recipe.py
           python3 builder/parse-recipe.py packages/opencode
+          eval "$(python3 builder/parse-recipe.py packages/yt-dlp)"
+          echo "eval-test: type=[${SOURCE_TYPE-unset}] urlbin=[${RECIPE_URL_BIN-unset}]"
 
       - name: Build AppImage
         run: sh builder/build.sh ${{ matrix.pkg.dir }}
