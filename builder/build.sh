@@ -10,7 +10,6 @@ BUILDER_DIR="$(dirname "$(readlink -f "$0")")"
 . "$BUILDER_DIR/pinned.sh"
 
 eval "$(python3 "$BUILDER_DIR/parse-recipe.py" "$RECIPE_DIR")"
-echo "DEBUG parsed: type=$SOURCE_TYPE url=$SOURCE_URL url_bin=$RECIPE_URL_BIN"
 # Defaults decouple build.sh from parser skew (unset vars are fatal under set -u).
 : "${SOURCE_PKG:=}" "${SOURCE_URL:=}" "${SOURCE_URL_BIN:=}" "${SOURCE_REPO:=}" \
 	"${SOURCE_REF:=}" "${SOURCE_URL_VERSION:=}" "${RECIPE_MAIN_BIN:=}" \

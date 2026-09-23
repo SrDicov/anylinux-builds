@@ -21,7 +21,7 @@ def main():
         "SOURCE_TYPE": src.get("type", ""),
         "SOURCE_PKG": src.get("pkg", ""),
         "SOURCE_URL": src.get("url", ""),
-        "SOURCE_URL_BIN": src.get("url_bin", ""),
+        "RECIPE_URL_BIN": src.get("url_bin", ""),
         "SOURCE_REPO": src.get("repo", ""),
         "SOURCE_REF": src.get("ref", ""),
         "SOURCE_URL_VERSION": src.get("url_version", ""),

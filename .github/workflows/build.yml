@@ -79,37 +79,6 @@ jobs:
       - name: Bootstrap python3 for recipe parsing
         run: pacman -Sy --noconfirm python3
 
-      - name: Shell forensics (temporary)
-        run: |
-          ls -la /bin/sh; sh --version 2>&1 | head -n1 || true
-          git rev-parse HEAD || true
-          grep -n 'SOURCE_PKG:=' builder/build.sh || echo "NO DEFAULTS LINE"
-          sh -c 'set -u; : "${FORENSIC_TEST:=assigned-ok}"; echo "forensic: $FORENSIC_TEST"'
-          md5sum builder/parse-recipe.py builder/recipe.py
-          python3 builder/parse-recipe.py packages/opencode
-          eval "$(python3 builder/parse-recipe.py packages/yt-dlp)"
-          echo "eval-test: type=[${SOURCE_TYPE-unset}] urlbin=[${RECIPE_URL_BIN-unset}]"
-          python3 builder/parse-recipe.py packages/yt-dlp | cat -A | head -n20
-          eval "EA=''; EB='x'"; echo "mini-eval: [${EA-unset}] [${EB-unset}]"
-          for i in 1 2 3 4 5; do python3 builder/parse-recipe.py packages/yt-dlp | md5sum; done
-          for i in 1 2 3; do md5sum packages/yt-dlp/package.yml; done
-          git status --short | head; git stash list | head -n3
-          git show HEAD:packages/yt-dlp/package.yml | md5sum
-          python3 --version
-          env | grep -iE '^(ENV|BASH_ENV|SHELLOPTS|POSIXLY|GITHUB_)' | head -n20
-          eval "$(python3 builder/parse-recipe.py packages/yt-dlp | head -n 4)"
-          echo "eval4: urlbin=[${RECIPE_URL_BIN-unset}]"
-          eval "$(python3 builder/parse-recipe.py packages/yt-dlp | head -n 5)"
-          echo "eval5: urlbin=[${RECIPE_URL_BIN-unset}]"
-          python3 builder/parse-recipe.py packages/yt-dlp > /tmp/recipe.env
-          set -a; . /tmp/recipe.env; set +a
-          echo "dotsrc: urlbin=[${RECIPE_URL_BIN-unset}]"
-          out="$(python3 builder/parse-recipe.py packages/yt-dlp)"
-          echo "out-lines: $(printf '%s' "$out" | wc -l)"
-          echo "out-md5: $(printf '%s' "$out" | md5sum)"
-          eval "$out"
-          echo "after-eval: [${RECIPE_URL_BIN-unset}]"
-
       - name: Build AppImage
         run: sh builder/build.sh ${{ matrix.pkg.dir }}
 
