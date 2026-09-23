@@ -1,10 +1,10 @@
-# opencode v2 (anomalyco fork): compiled from source with Bun.
-# Baseline x64 target so it also runs on CPUs without AVX2.
+# opencode estable (anomalyco fork, rama dev == linea v1.x):
+# compilado desde fuente con Bun, target baseline (sin AVX2).
 name: opencode
 source:
   type: git
   repo: https://github.com/anomalyco/opencode.git
-  ref: v2
+  ref: dev
 bin: /usr/bin/opencode
 icon: DUMMY
 desktop: DUMMY
@@ -18,4 +18,4 @@ build_out: packages/cli/dist/cli-linux-x64-baseline/bin/opencode
 build_run:
   - bun install
   - cd packages/cli
-  - bun run script/build.ts --target=opencode-linux-x64-baseline
+  - bun run script/build.ts --single --baseline
