@@ -131,6 +131,53 @@ static int want_fake(void) {
 	return cached;
 }
 
+/* 1 if STEAM_SHIM_DEBUG= appears in environ. Checked lazily, cached. */
+static int debug_on(void) {
+	static int cached = -1;
+	static const char key[] = "STEAM_SHIM_DEBUG=";
+	char buf[1024];
+	long fd, r, i;
+	unsigned long u;
+	if (cached != -1)
+		return cached;
+	cached = 0;
+	fd = raw_open("/proc/self/environ");
+	if (fd < 0)
+		return 0;
+	r = raw_rw(
+#ifdef __x86_64__
+		SYS_read,
+#else
+		SYS_read,
+#endif
+		fd, buf, sizeof(buf));
+	if (r > 0) {
+		for (i = 0, u = (unsigned long)r; i + 18 < u; i++) {
+			if (streq_n(buf + i, key, 17)) {
+				cached = 1;
+				break;
+			}
+		}
+	}
+	raw_close(fd);
+	return cached;
+}
+
+static void dbg_fake(void) {
+	static const char m[] = "steam-shim: faked statvfs space\n";
+	unsigned long n = 0;
+	while (m[n])
+		n++;
+	if (debug_on())
+		raw_rw(
+#ifdef __x86_64__
+			SYS_write,
+#else
+			SYS_write,
+#endif
+			2, m, n);
+}
+
 #ifdef __x86_64__
 /* x86_64 libc struct statvfs == statvfs64 layout. */
 struct vfs {
@@ -170,6 +217,7 @@ static void maybe_fake(struct vfs *o) {
 		o->blocks = want;
 	o->bfree = want;
 	o->bavail = want;
+	dbg_fake();
 }
 int statvfs(const char *p, struct vfs *o) {
 	struct kbuf {
@@ -230,6 +278,7 @@ static void maybe_fake64(struct vfs64 *o) {
 		o->blocks = want;
 	o->bfree = want;
 	o->bavail = want;
+	dbg_fake();
 }
 /* i386 libc struct statvfs (32-bit fields, may truncate): convert. */
 struct vfs32 {
