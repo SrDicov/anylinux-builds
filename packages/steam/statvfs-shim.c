@@ -543,8 +543,8 @@ static long route_exec(const char *path, char *const *argv, char *const *envp,
 	/* Stack-local: exec can come from any thread. */
 	char *nargv[128];
 	char *nenvp[300];
-	char ldlp[2048];
-	char lpref[2064];
+	char ldlp[4096];
+	char lpref[4112];
 	char ldcand[1024];
 	const char *ld, *libs, *oldlp;
 	unsigned long i, n = 0, m = 0, l;
@@ -564,16 +564,59 @@ static long route_exec(const char *path, char *const *argv, char *const *envp,
 		return raw_execve(path, argv, (char *const *)envp);
 	nargv[n] = 0;
 	oldlp = r_getenv("LD_LIBRARY_PATH");
-	l = r_strlen(libs);
-	if (l > sizeof(ldlp) - 32)
-		return raw_execve(path, argv, (char *const *)envp);
-	for (i = 0; i < l; i++)
-		ldlp[m++] = libs[i];
+	/* Valve precedence first: keep inherited paths verbatim, then scout
+	 * dirs derived from the target (covers scrubbed/direct launches),
+	 * image libs last as fallback. */
+	m = 0;
 	if (oldlp && *oldlp) {
-		ldlp[m++] = ':';
 		for (i = 0; oldlp[i] && m < sizeof(ldlp) - 1; i++)
 			ldlp[m++] = oldlp[i];
 	}
+	{
+		unsigned long dl = 0, slash = 0, k, q;
+		static const char s32[3][40] = {
+			"/steam-runtime/pinned_libs_32",
+			"/steam-runtime/lib/i386-linux-gnu",
+			"/steam-runtime/usr/lib/i386-linux-gnu"
+		};
+		static const char s64[3][40] = {
+			"/steam-runtime/pinned_libs_64",
+			"/steam-runtime/lib/x86_64-linux-gnu",
+			"/steam-runtime/usr/lib/x86_64-linux-gnu"
+		};
+		char cand[1024];
+		while (path[dl]) {
+			if (path[dl] == '/')
+				slash = dl;
+			dl++;
+		}
+		if (slash > 0 && slash < 900) {
+			for (k = 0; k < 3; k++) {
+				const char *sfx = is64 ? s64[k] : s32[k];
+				unsigned long sl = r_strlen(sfx);
+				long fd;
+				if (slash + sl >= sizeof(cand))
+					continue;
+				for (q = 0; q < slash; q++)
+					cand[q] = path[q];
+				for (q = 0; q <= sl; q++)
+					cand[slash + q] = sfx[q];
+				fd = raw_open(cand);
+				if (fd < 0)
+					continue;
+				raw_close(fd);
+				if (m > 0 && m < sizeof(ldlp) - 1)
+					ldlp[m++] = ':';
+				for (q = 0; q < slash + sl && m < sizeof(ldlp) - 1; q++)
+					ldlp[m++] = cand[q];
+			}
+		}
+	}
+	l = r_strlen(libs);
+	if (m > 0 && m < sizeof(ldlp) - 1)
+		ldlp[m++] = ':';
+	for (i = 0; i < l && m < sizeof(ldlp) - 1; i++)
+		ldlp[m++] = libs[i];
 	ldlp[m] = 0;
 	n = 0;
 	for (i = 0; envp[i]; i++) {
