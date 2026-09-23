@@ -9,6 +9,9 @@ block `- item` lists, true/false booleans. Exits non-zero on error.
 import sys
 
 
+LIST_KEYS = ("build_deps", "hooks", "test_args", "build_run", "extra_paths")
+
+
 def parse(text):
     root, current, pending = {}, None, None
     for lineno, raw in enumerate(text.splitlines(), 1):
@@ -28,7 +31,7 @@ def parse(text):
                     root[key] = {}
                     current = root[key]
                     pending = None
-                elif key in ("build_deps", "hooks", "test_args", "build_run"):
+                elif key in LIST_KEYS:
                     root[key] = []  # filled by the block-list rescan below
                     pending = key
                 else:
@@ -52,11 +55,11 @@ def parse(text):
             key, value = key.strip(), value.strip()
             if value.startswith("- ") or value == "-":
                 raise ValueError(f"line {lineno}: inline '-' not supported, use [a, b]")
-            if key in ("build_deps", "hooks", "test_args", "build_run"):
+            if key in LIST_KEYS:
                 raise ValueError(f"line {lineno}: '{key}' must be top-level")
             raise ValueError(f"line {lineno}: unexpected indentation")
     # block-style lists: rescan for "- item" under known list keys
-    for key in ("build_deps", "hooks", "test_args", "build_run"):
+    for key in LIST_KEYS:
         items = _block_list(text, key)
         if items is not None:
             root[key] = items
@@ -104,6 +107,7 @@ def load_recipe(path):
     data.setdefault("test_args", [])
     data.setdefault("build_run", [])
     data.setdefault("build_out", "")
+    data.setdefault("extra_paths", [])
     data.setdefault("debloat", "common")
     data.setdefault("host_drivers", "false")
     for key in ("name", "bin", "icon", "desktop"):

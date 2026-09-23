@@ -27,7 +27,10 @@ or `source.repo`+`ref` for git (built from source; needs `build_out` +
 `build_deps`, `debloat` (`common`|`mesa`|`none`),
 `hooks` (e.g. `[fix-namespaces.hook]`), `host_drivers` (GTK/Qt only),
 `test_args` (optional: e.g. `[--version]` — direct smoke test for CLIs/TUIs
-that can't stay alive 12s under `--test`).
+that can't stay alive 12s under `--test`),
+`extra_paths` (optional: extra dirs whose `.so`/binaries get deployed),
+`data_from` (optional: dir of runtime DATA copied next to the binary —
+Electron `icudtl.dat`/`*.pak`/`locales`/`app.asar`; never ELFs).
 
 ## How it works
 

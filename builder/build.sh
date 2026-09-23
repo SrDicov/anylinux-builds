@@ -15,7 +15,7 @@ eval "$(python3 "$BUILDER_DIR/parse-recipe.py" "$RECIPE_DIR")"
 	"${SOURCE_REF:=}" "${SOURCE_URL_VERSION:=}" "${RECIPE_MAIN_BIN:=}" \
 	"${RECIPE_BUILD_DEPS:=}" "${RECIPE_DEBLOAT:=common}" "${RECIPE_HOOKS:=}" \
 	"${RECIPE_TEST_ARGS:=}" "${RECIPE_BUILD_OUT:=}" "${RECIPE_DATA_FROM:=}" \
-	"${RECIPE_HOST_DRIVERS:=0}"
+	"${RECIPE_EXTRA_PATHS:=}" "${RECIPE_HOST_DRIVERS:=0}"
 
 ARCH="$(uname -m)"
 export ICON="$RECIPE_ICON"
@@ -112,7 +112,8 @@ esac
 echo "=== bundling AppImage ==="
 wget --retry-connrefused --tries=30 "$QUICK_SHARUN_URL" -O ./quick-sharun
 chmod +x ./quick-sharun
-./quick-sharun "$RECIPE_BIN"
+# shellcheck disable=SC2086
+./quick-sharun "$RECIPE_BIN" $RECIPE_EXTRA_PATHS
 
 if [ -n "$RECIPE_DATA_FROM" ]; then
 	# Apps like Electron keep runtime DATA next to the binary

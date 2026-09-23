@@ -9,6 +9,9 @@ source:
   type: aur
   pkg: vesktop-bin
 bin: /opt/vesktop/vesktop
+# Extra .so + helper binaries from the app dir (libffmpeg with codecs,
+# ANGLE libs, crashpad). Data files come via data_from below.
+extra_paths: [/opt/vesktop]
 icon: DUMMY
 desktop: DUMMY
 main_bin: vesktop
