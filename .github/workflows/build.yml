@@ -79,6 +79,13 @@ jobs:
       - name: Bootstrap python3 for recipe parsing
         run: pacman -Sy --noconfirm python3
 
+      - name: Shell forensics (temporary)
+        run: |
+          ls -la /bin/sh; sh --version 2>&1 | head -n1 || true
+          git rev-parse HEAD || true
+          grep -n 'SOURCE_PKG:=' builder/build.sh || echo "NO DEFAULTS LINE"
+          sh -c 'set -u; : "${FORENSIC_TEST:=assigned-ok}"; echo "forensic: $FORENSIC_TEST"'
+
       - name: Build AppImage
         run: sh builder/build.sh ${{ matrix.pkg.dir }}
 
