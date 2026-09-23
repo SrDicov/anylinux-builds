@@ -545,6 +545,7 @@ static long route_exec(const char *path, char *const *argv, char *const *envp,
 	char *nenvp[300];
 	char ldlp[2048];
 	char lpref[2064];
+	char ldcand[1024];
 	const char *ld, *libs, *oldlp;
 	unsigned long i, n = 0, m = 0, l;
 	if (!argv || !envp)
@@ -593,8 +594,29 @@ static long route_exec(const char *path, char *const *argv, char *const *envp,
 		nenvp[n++] = lpref;
 		nenvp[n] = 0;
 	}
-	dbg_route(path, ld);
-	return raw_execve(ld, nargv, nenvp);
+	/* ld may be colon-separated (tree copy first, image fallback):
+	 * try each candidate until one executes. */
+	for (;;) {
+		unsigned long dl = 0;
+		while (ld[dl] && ld[dl] != ':')
+			dl++;
+		if (dl == 0 || dl >= sizeof(ldcand)) {
+			if (!ld[dl])
+				break;
+			ld += dl + 1;
+			continue;
+		}
+		for (i = 0; i < dl; i++)
+			ldcand[i] = ld[i];
+		ldcand[dl] = 0;
+		nargv[0] = ldcand;
+		dbg_route(path, ldcand);
+		raw_execve(ldcand, nargv, nenvp);
+		if (!ld[dl])
+			break;
+		ld += dl + 1;
+	}
+	return raw_execve(path, argv, (char *const *)envp);
 }
 int execve(const char *path, char *const argv[], char *const envp[]) {
 	int is64 = 0;
