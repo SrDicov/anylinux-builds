@@ -197,6 +197,25 @@ static void dbg_fake(void) {
 			2, m, n);
 }
 
+/* Verbose: why a call was NOT faked (0 = gate values, 1 = env). */
+static void dbg_skip(int which) {
+	static const char m0[] = "steam-shim: skip (fs writable or has space)\n";
+	static const char m1[] = "steam-shim: skip (no STEAM_IMG_ROOT in environ)\n";
+	const char *m = which ? m1 : m0;
+	unsigned long n = 0;
+	if (!debug_on())
+		return;
+	while (m[n])
+		n++;
+	raw_rw(
+#ifdef __x86_64__
+		SYS_write,
+#else
+		SYS_write,
+#endif
+		2, m, n);
+}
+
 #define SYS_readlinkat_x64 267
 #define SYS_readlink_x86 85
 static long raw_readlink_cwd(char *b, unsigned long c) {
@@ -337,10 +356,14 @@ static void fill_vfs(struct vfs *o, const u64 *kb) {
 }
 static void maybe_fake(struct vfs *o) {
 	u64 want;
-	if ((o->flag & 1u) != 1u || o->bavail != 0)
+	if ((o->flag & 1u) != 1u || o->bavail != 0) {
+		dbg_skip(0);
 		return;
-	if (!want_fake())
+	}
+	if (!want_fake()) {
+		dbg_skip(1);
 		return;
+	}
 	want = (8ull * 1024 * 1024 * 1024) / (o->frsize ? o->frsize : 4096u);
 	if (o->blocks < want)
 		o->blocks = want;
@@ -400,10 +423,14 @@ static void fill_vfs64(struct vfs64 *o, const char *kb) {
 }
 static void maybe_fake64(struct vfs64 *o) {
 	u64 want;
-	if ((o->flag & 1u) != 1u || o->bavail != 0)
+	if ((o->flag & 1u) != 1u || o->bavail != 0) {
+		dbg_skip(0);
 		return;
-	if (!want_fake())
+	}
+	if (!want_fake()) {
+		dbg_skip(1);
 		return;
+	}
 	want = (8ull * 1024 * 1024 * 1024) / (o->frsize ? o->frsize : 4096u);
 	if (o->blocks < want)
 		o->blocks = want;
