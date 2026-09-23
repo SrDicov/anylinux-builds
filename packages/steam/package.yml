@@ -12,6 +12,9 @@ source:
   url: https://cdn.akamai.steamstatic.com/client/installer/steam.deb
   url_version: apt http://repo.steampowered.com/steam/dists/stable/steam/binary-amd64/Packages steam-launcher
 bin: /usr/lib/steam/bin_steam.sh
+# El .desktop trae Exec=/usr/bin/steam; el binario real desplegado es
+# bin_steam.sh: hay que declararlo o quick-sharun aborta buscandolo.
+main_bin: bin_steam.sh
 # /usr/lib/steam: lanzador + bootstraplinux tarball + steam_launcher py.
 # /usr/lib32: stack 32-bit completo (quick-sharun lo detecta como LIB32 y
 # empaqueta drivers; el cliente 32-bit y Proton lo necesitan).
