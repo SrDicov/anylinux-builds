@@ -1,0 +1,15 @@
+# concord: TUI client for Discord. AUR -bin repackages the upstream
+# release binary (no compilation). Single binary, no wrapper.
+name: concord
+source:
+  type: aur
+  pkg: concord-bin
+bin: /usr/bin/concord
+icon: DUMMY
+desktop: DUMMY
+main_bin: concord
+build_deps: []
+debloat: none
+hooks: []
+host_drivers: false
+test_args: [--version]

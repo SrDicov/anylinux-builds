@@ -21,6 +21,8 @@ def main():
         "SOURCE_TYPE": src.get("type", ""),
         "SOURCE_PKG": src.get("pkg", ""),
         "SOURCE_URL": src.get("url", ""),
+        "SOURCE_REPO": src.get("repo", ""),
+        "SOURCE_REF": src.get("ref", ""),
         "SOURCE_URL_VERSION": src.get("url_version", ""),
         "RECIPE_BIN": data["bin"],
         "RECIPE_ICON": data["icon"],
@@ -30,6 +32,7 @@ def main():
         "RECIPE_DEBLOAT": data.get("debloat", "common"),
         "RECIPE_HOOKS": ":".join(data.get("hooks", []) or []),
         "RECIPE_TEST_ARGS": " ".join(data.get("test_args", []) or []),
+        "RECIPE_BUILD_OUT": data.get("build_out", ""),
         "RECIPE_HOST_DRIVERS": "1"
         if str(data.get("host_drivers", "false")).lower() in ("1", "true", "yes")
         else "0",

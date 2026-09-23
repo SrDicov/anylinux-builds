@@ -10,7 +10,7 @@ import sys
 
 
 def parse(text):
-    root, current = {}, None
+    root, current, pending = {}, None, None
     for lineno, raw in enumerate(text.splitlines(), 1):
         line = raw.split(" #", 1)[0].rstrip()
         if not line.strip() or line.strip().startswith("#"):
@@ -18,7 +18,7 @@ def parse(text):
         indent = len(line) - len(line.lstrip(" "))
         content = line.strip()
         if indent == 0:
-            current = None
+            current, pending = None, None
             if content.startswith("- "):
                 raise ValueError(f"line {lineno}: unexpected list item at top level")
             key, _, value = content.partition(":")
@@ -27,10 +27,21 @@ def parse(text):
                 if key == "source":
                     root[key] = {}
                     current = root[key]
+                    pending = None
+                elif key in ("build_deps", "hooks", "test_args", "build_run"):
+                    root[key] = []  # filled by the block-list rescan below
+                    pending = key
                 else:
                     raise ValueError(f"line {lineno}: key '{key}' needs a value")
             else:
                 root[key] = _scalar(value)
+        elif content.startswith("- ") and pending in (
+            "build_deps",
+            "hooks",
+            "test_args",
+            "build_run",
+        ):
+            continue  # collected by the block-list rescan below
         elif current is not None:
             if content.startswith("- "):
                 raise ValueError(f"line {lineno}: block lists only valid for known list keys")
@@ -41,11 +52,11 @@ def parse(text):
             key, value = key.strip(), value.strip()
             if value.startswith("- ") or value == "-":
                 raise ValueError(f"line {lineno}: inline '-' not supported, use [a, b]")
-            if key in ("build_deps", "hooks"):
+            if key in ("build_deps", "hooks", "test_args", "build_run"):
                 raise ValueError(f"line {lineno}: '{key}' must be top-level")
             raise ValueError(f"line {lineno}: unexpected indentation")
     # block-style lists: rescan for "- item" under known list keys
-    for key in ("build_deps", "hooks", "test_args"):
+    for key in ("build_deps", "hooks", "test_args", "build_run"):
         items = _block_list(text, key)
         if items is not None:
             root[key] = items
@@ -91,18 +102,27 @@ def load_recipe(path):
     data.setdefault("build_deps", [])
     data.setdefault("hooks", [])
     data.setdefault("test_args", [])
+    data.setdefault("build_run", [])
+    data.setdefault("build_out", "")
     data.setdefault("debloat", "common")
     data.setdefault("host_drivers", "false")
     for key in ("name", "bin", "icon", "desktop"):
         if key not in data:
             raise ValueError(f"{path}: missing required key '{key}'")
     src = data.get("source", {})
-    if src.get("type") not in ("pacman", "aur", "url"):
-        raise ValueError(f"{path}: source.type must be pacman|aur|url")
+    if src.get("type") not in ("pacman", "aur", "url", "git"):
+        raise ValueError(f"{path}: source.type must be pacman|aur|url|git")
     if src["type"] in ("pacman", "aur") and not src.get("pkg"):
         raise ValueError(f"{path}: source.pkg required for pacman|aur")
     if src["type"] == "url" and not src.get("url"):
         raise ValueError(f"{path}: source.url required for url")
+    if src["type"] == "git":
+        if not src.get("repo") or not src.get("ref"):
+            raise ValueError(f"{path}: source.repo+ref required for git")
+        if not data.get("build_out"):
+            raise ValueError(f"{path}: build_out required for git")
+        if "main_bin" not in data:
+            raise ValueError(f"{path}: main_bin required for git (install target)")
     if data["desktop"] == "DUMMY" and "main_bin" not in data:
         raise ValueError(f"{path}: main_bin required when desktop is DUMMY")
     if src["type"] == "url" and "main_bin" not in data:

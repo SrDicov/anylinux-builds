@@ -1,7 +1,8 @@
 #!/bin/sh
 # Print the current upstream version/fingerprint for one recipe dir.
-# pacman -> repo version; aur -> AUR RPC version; url -> github tag or HTTP ETag.
-# Output must be stable for identical upstream content. Usage: check-update.sh <dir>
+# pacman -> repo version; aur -> AUR RPC version; url -> github tag or HTTP
+# ETag; git -> commit SHA of the ref. Output must be stable for identical
+# upstream content. Usage: check-update.sh <dir>
 set -eu
 
 RECIPE_DIR="${1:?usage: check-update.sh packages/<app>}"
@@ -44,5 +45,8 @@ url)
 		_http_fingerprint "$SOURCE_URL"
 		;;
 	esac
+	;;
+git)
+	git ls-remote "$SOURCE_REPO" "$SOURCE_REF" | awk '{print $1; exit}'
 	;;
 esac

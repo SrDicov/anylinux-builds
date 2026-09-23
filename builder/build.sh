@@ -65,6 +65,21 @@ url)
 	wget --retry-connrefused --tries=30 "$SOURCE_URL" -O /tmp/payload-bin
 	install -Dm755 /tmp/payload-bin "/usr/bin/$RECIPE_MAIN_BIN"
 	;;
+git)
+	# Clone the ref and run the recipe's own build lines inside it;
+	# the resulting binary is installed to /usr for bundling.
+	rm -rf /tmp/src-build
+	git clone --depth 1 --branch "$SOURCE_REF" "$SOURCE_REPO" /tmp/src-build
+	python3 - "$RECIPE_DIR" > /tmp/build-run.sh <<'PYEOF'
+import sys
+sys.path.insert(0, 'builder')
+from recipe import load_recipe
+data = load_recipe(sys.argv[1] + '/package.yml')
+sys.stdout.write('\n'.join(data.get('build_run', []) or []) + '\n')
+PYEOF
+	( cd /tmp/src-build && sh /tmp/build-run.sh )
+	install -Dm755 "/tmp/src-build/$RECIPE_BUILD_OUT" "/usr/bin/$RECIPE_MAIN_BIN"
+	;;
 *)
 	echo "ERROR: unknown source.type '$SOURCE_TYPE'" >&2
 	exit 1
@@ -82,10 +97,11 @@ echo "=== testing ==="
 if [ -n "$RECIPE_TEST_ARGS" ]; then
 	# Short-lived CLI: must exit 0 with the given args (missing
 	# bundled libs fail here). Same extract-and-run env as --test.
+	# timeout guards against apps that ignore the args and hang.
 	export APPIMAGE_TARGET_DIR="$PWD"/_test-app
 	export APPIMAGE_EXTRACT_AND_RUN=1
 	# shellcheck disable=SC2086
-	./dist/*.AppImage $RECIPE_TEST_ARGS
+	timeout 60 ./dist/*.AppImage $RECIPE_TEST_ARGS
 else
 	# Long-running GUI/TUI: quick-sharun requires it to stay alive
 	# 12s. Force a sane TERM (CI sets TERM=unknown; ncurses aborts).

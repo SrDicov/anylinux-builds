@@ -16,3 +16,5 @@ build_deps: []
 debloat: mesa
 hooks: [fix-namespaces.hook]
 host_drivers: false
+# Exits immediately in CI (no usable display/sandbox): direct smoke test.
+test_args: [--version]

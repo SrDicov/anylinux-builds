@@ -17,8 +17,10 @@ git add packages/myapp && git commit -m "feat: add myapp"
 Then trigger it once manually: *Actions → Daily builds → Run workflow*
 with `package = myapp`. The daily cron picks it up from then on.
 
-`package.yml` fields: `name`, `source.type` (`pacman`|`aur`|`url`),
-`source.pkg` or `source.url` (+`url_version: github:owner/repo`|`etag`),
+`package.yml` fields: `name`, `source.type` (`pacman`|`aur`|`url`|`git`),
+`source.pkg` or `source.url` (+`url_version: github:owner/repo`|`etag`)
+or `source.repo`+`ref` for git (built from source; needs `build_out` +
+`build_run` lines),
 `bin`, `icon`/`desktop` (real `/usr` paths or `DUMMY` + `main_bin`),
 `build_deps`, `debloat` (`common`|`mesa`|`none`),
 `hooks` (e.g. `[fix-namespaces.hook]`), `host_drivers` (GTK/Qt only),
