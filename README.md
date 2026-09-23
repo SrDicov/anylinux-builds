@@ -21,7 +21,9 @@ with `package = myapp`. The daily cron picks it up from then on.
 `source.pkg` or `source.url` (+`url_version: github:owner/repo`|`etag`),
 `bin`, `icon`/`desktop` (real `/usr` paths or `DUMMY` + `main_bin`),
 `build_deps`, `debloat` (`common`|`mesa`|`none`),
-`hooks` (e.g. `[fix-namespaces.hook]`), `host_drivers` (GTK/Qt only).
+`hooks` (e.g. `[fix-namespaces.hook]`), `host_drivers` (GTK/Qt only),
+`test_args` (optional: e.g. `[--version]` — direct smoke test for CLIs/TUIs
+that can't stay alive 12s under `--test`).
 
 ## How it works
 
