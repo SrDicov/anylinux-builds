@@ -57,6 +57,10 @@ url)
 	esac
 	;;
 git)
-	git ls-remote "$SOURCE_REPO" "$SOURCE_REF" | awk '{print $1; exit}'
+	# ls-remote pattern matches suffixes too (backup/foo and foo both match
+	# "foo"); prefer the exact heads ref like `git clone -b` does, else first.
+	out="$(git ls-remote "$SOURCE_REPO" "$SOURCE_REF")"
+	head_sha="$(printf '%s\n' "$out" | awk -v r="refs/heads/$SOURCE_REF" '$2 == r {print $1; exit}')"
+	if [ -n "$head_sha" ]; then printf '%s\n' "$head_sha"; else printf '%s\n' "$out" | awk '{print $1; exit}'; fi
 	;;
 esac
