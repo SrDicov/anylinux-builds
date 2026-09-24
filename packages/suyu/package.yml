@@ -1,7 +1,7 @@
 # suyu (fork dougchansan, rama mk8-recomp): emulador Switch. Se compila
 # desde fuente en el contenedor Arch; el tarball precompilado es Ubuntu
 # (pide libavcodec.so.60/boost1.83) y no enlaza en Arch.
-# ponytail: system ffmpeg (Arch 9 vs Ubuntu 6 del upstream); si falla el build, -DYUZU_USE_BUNDLED_FFMPEG=ON
+# ponytail: system ffmpeg (Arch 9 vs Ubuntu 6 del upstream); si falla el build, -DYUZU_USE_BUNDLED_FFMPEG=ON. GCC nuevo eleva -Wconversion a error en vk_stall_probe.h (u64*double), se desactiva solo ese aviso.
 name: suyu
 source:
   type: git
@@ -19,7 +19,7 @@ hooks: []
 host_drivers: false
 build_run:
   - git submodule update --init --depth 1 --jobs $(nproc)
-  - cmake -B build -GNinja -DCMAKE_BUILD_TYPE=Release -DENABLE_QT=ON -DYUZU_USE_BUNDLED_QT=OFF -DYUZU_TESTS=OFF -DENABLE_WEB_SERVICE=OFF -Dfmt_FORCE_BUNDLED=ON
+  - cmake -B build -GNinja -DCMAKE_BUILD_TYPE=Release -DENABLE_QT=ON -DYUZU_USE_BUNDLED_QT=OFF -DYUZU_TESTS=OFF -DENABLE_WEB_SERVICE=OFF -Dfmt_FORCE_BUNDLED=ON -DCMAKE_CXX_FLAGS=-Wno-conversion
   - cmake --build build --target suyu suyu-cmd
 patch_run:
   - install -Dm755 /tmp/src-build/build/bin/suyu-cmd /usr/bin/suyu-cmd
