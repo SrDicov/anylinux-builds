@@ -13,7 +13,7 @@ desktop: DUMMY
 main_bin: suyu
 build_out: build/bin/suyu
 extra_paths: [/usr/bin/suyu-cmd]
-build_deps: [cmake, ninja, nasm, pkgconf, autoconf, glslang, qt6-base, qt6-svg, qt6-charts, qt6-multimedia, qt6-wayland, boost, ffmpeg, sdl3, libusb, openssl, alsa-lib, libpulse, libx11, libxext, libxrandr, libxcursor, libxi, libxfixes, libxkbcommon, libxss, libxtst, wayland, wayland-protocols, libdecor, libdrm, mesa, vulkan-headers, vulkan-icd-loader, zstd, lz4, zlib]
+build_deps: [cmake, ninja, nasm, pkgconf, autoconf, glslang, qt6-base, qt6-svg, qt6-charts, qt6-multimedia, qt6-wayland, boost, ffmpeg, sdl3, libusb, openssl, alsa-lib, libpulse, libx11, libxext, libxrandr, libxcursor, libxi, libxfixes, libxkbcommon, libxss, libxtst, wayland, wayland-protocols, libdecor, libdrm, mesa, vulkan-headers, vulkan-utility-libraries, vulkan-icd-loader, zstd, lz4, zlib]
 debloat: mesa
 hooks: []
 host_drivers: false
