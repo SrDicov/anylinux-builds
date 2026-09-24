@@ -1,7 +1,7 @@
 # suyu (fork dougchansan, rama mk8-recomp): emulador Switch. Se compila
 # desde fuente en el contenedor Arch; el tarball precompilado es Ubuntu
 # (pide libavcodec.so.60/boost1.83) y no enlaza en Arch.
-# ponytail: system ffmpeg (Arch 9 vs Ubuntu 6 del upstream); si falla el build, -DYUZU_USE_BUNDLED_FFMPEG=ON. GCC nuevo eleva -Wconversion a error en vk_stall_probe.h (u64*double), se desactiva solo ese aviso.
+# ponytail: system ffmpeg (Arch 9 vs Ubuntu 6 del upstream); si falla el build, -DYUZU_USE_BUNDLED_FFMPEG=ON. GCC nuevo eleva -Wconversion a error en vk_stall_probe.h: sed con static_cast<double> (el -Werror=conversion del target pisa cualquier flag global).
 name: suyu
 source:
   type: git
@@ -19,6 +19,7 @@ hooks: []
 host_drivers: false
 build_run:
   - git submodule update --init --depth 1 --jobs $(nproc)
+  - sed -i -E 's/\b(framew|frame|gpuidle|draw|schedw|build|acquire|present) \* ms/static_cast<double>(\1) * ms/g; s/\(frame > known \? frame - known : 0\) \* ms/(frame > known ? static_cast<double>(frame - known) : 0.0) * ms/' src/video_core/renderer_vulkan/vk_stall_probe.h
   - cmake -B build -GNinja -DCMAKE_BUILD_TYPE=Release -DENABLE_QT=ON -DYUZU_USE_BUNDLED_QT=OFF -DYUZU_TESTS=OFF -DENABLE_WEB_SERVICE=OFF -Dfmt_FORCE_BUNDLED=ON -DCMAKE_CXX_FLAGS=-Wno-conversion
   - cmake --build build --target suyu suyu-cmd
 patch_run:
