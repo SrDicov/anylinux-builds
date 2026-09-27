@@ -25,3 +25,4 @@ test_args: [--no-sandbox, --version]
 link_run:
   - mkdir -p "$APPDIR/lib/spotify"
   - ln -sfn ../../bin/icudtl.dat "$APPDIR/lib/spotify/icudtl.dat"
+  - ln -sfn ../../bin/v8_context_snapshot.bin "$APPDIR/lib/spotify/v8_context_snapshot.bin"
