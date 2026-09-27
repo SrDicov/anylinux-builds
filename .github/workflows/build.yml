@@ -38,7 +38,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          # Full history: push CHANGED detection diffs HEAD~1..HEAD;
+          # shallow clones leave HEAD~1 unresolvable (empty matrix).
+          fetch-depth: 0
 
       - name: Sync package db + tools for version checks
         run: pacman -Sy --noconfirm python3 curl git
