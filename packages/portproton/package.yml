@@ -12,5 +12,14 @@ main_bin: portproton
 icon: /usr/share/icons/hicolor/scalable/apps/ru.linux_gaming.PortProton.svg
 desktop: /usr/share/applications/ru.linux_gaming.PortProton.desktop
 extra_paths: [/usr/bin/yad]
+# vulkan-*: pre-satisfacen el proveedor virtual `vulkan-driver` ANTES del
+# makepkg -si, para que no entre nvidia-utils al contenedor sin GPU
+# (precedente steam: mismo combo, CI verde). El nvidia-userspace rompe
+# el Xvfb del --test (core dumped).
+build_deps: [vulkan-radeon, vulkan-intel, vulkan-nouveau]
 debloat: mesa
 hooks: [fix-namespaces.hook]
+# El launcher aborta como root ("Do not run the script from the
+# superuser!") y CI corre como root: mismo bypass que steam.
+patch_run:
+  - python3 -c 'p="/usr/bin/portproton"; s=open(p).read(); old="\"$(id -u)\" == \"0\""; assert s.count(old)==1; open(p,"w").write(s.replace(old,"\"$(id -u)\" == \"69\""))'

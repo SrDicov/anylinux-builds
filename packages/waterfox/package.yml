@@ -13,5 +13,10 @@ icon: /usr/share/icons/hicolor/128x128/apps/waterfox.png
 desktop: /usr/share/applications/waterfox.desktop
 extra_paths: [/opt/waterfox]
 data_from: /opt/waterfox
+# Firefox carga sus .so propios (libnspr4, libxul...) por ruta relativa
+# al exe (XPCOMGlueLoad): tienen que estar junto al binario, como el
+# runtime GL de Chromium. Sin esto --version muere con
+# "cannot open shared object file".
+runtime_from: /opt/waterfox
 debloat: mesa
 test_args: [--version]
