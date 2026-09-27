@@ -19,3 +19,9 @@ runtime_from: /opt/spotify
 debloat: mesa
 hooks: [fix-namespaces.hook]
 test_args: [--no-sandbox, --version]
+# CEF resuelve icudtl.dat junto a libcef.so (lib/spotify/), no junto al exe:
+# en /opt conviven, pero sharun los parte y el GUI muere con SIGTRAP sin
+# ICU (solo --version sobrevive, por eso el CI nunca lo vio).
+link_run:
+  - mkdir -p "$APPDIR/lib/spotify"
+  - ln -sfn ../../bin/icudtl.dat "$APPDIR/lib/spotify/icudtl.dat"
