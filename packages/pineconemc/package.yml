@@ -1,0 +1,20 @@
+# pineconemc: fork de Prism Launcher con soporte Ely.by (Qt6, C++20).
+# Se compila desde fuente: el tarball portable lleva la version en el
+# nombre (no hay URL estable) y el AUR no existe. Rama develop = rolling
+# (version = SHA del ref). Submodulo libnbtplusplus requerido.
+name: pineconemc
+source:
+  type: git
+  repo: https://github.com/ElyPrismLauncher/Launcher
+  ref: develop
+bin: /usr/bin/elyprismlauncher
+icon: DUMMY
+desktop: DUMMY
+main_bin: elyprismlauncher
+build_out: build/elyprismlauncher
+build_deps: [cmake, ninja, extra-cmake-modules, qt6-base, qt6-svg, qt6-imageformats, quazip-qt6, tomlplusplus, zlib, cmark, scdoc]
+debloat: mesa
+build_run:
+  - git submodule update --init --depth 1 --jobs $(nproc)
+  - cmake -B build -GNinja -DCMAKE_BUILD_TYPE=Release -DLauncher_BUILD_PLATFORM=appimage
+  - cmake --build build

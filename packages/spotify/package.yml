@@ -1,0 +1,21 @@
+# spotify: cliente oficial (CEF, no Electron). AUR: reempaqueta el .deb
+# de repository.spotify.com con checks Release/Packages verificados.
+# OJO: /usr/bin/spotify es un script; se empaqueta el binario REAL
+# de /opt (regla wrapper-scripts: nada de rutas absolutas al sistema).
+# CEF: helpers + .pak/locales + GL/ffmpeg desde el exe dir.
+# CI es root: el smoke usa --no-sandbox (ELECTRON_DISABLE_SANDBOX no lo
+# lee CEF, no se hornea env muerto).
+name: spotify
+source:
+  type: aur
+  pkg: spotify
+bin: /opt/spotify/spotify
+main_bin: spotify
+icon: /usr/share/icons/hicolor/256x256/apps/spotify.png
+desktop: /usr/share/applications/spotify.desktop
+extra_paths: [/opt/spotify]
+data_from: /opt/spotify
+runtime_from: /opt/spotify
+debloat: mesa
+hooks: [fix-namespaces.hook]
+test_args: [--no-sandbox, --version]

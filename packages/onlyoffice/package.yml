@@ -1,0 +1,21 @@
+# onlyoffice: suite ofimatica (DesktopEditors 9.x, binario Qt/CEF).
+# AUR *-bin: reempaqueta el .deb oficial de GitHub, sin compilar.
+# OJO: /usr/bin/onlyoffice-desktopeditors es un script; se empaqueta
+# el binario REAL de /opt. El .desktop trae Exec=/usr/bin/... distinto
+# al binario desplegado: main_bin lo declara o quick-sharun aborta.
+# Sin test_args: no hay flag de salida rapida (--version no existe);
+# el --test por defecto la deja 12s viva. Si el zygote muere como root,
+# el follow-up es parchear el launcher con --no-sandbox (precedente steam).
+name: onlyoffice
+source:
+  type: aur
+  pkg: onlyoffice-bin
+bin: /opt/onlyoffice/desktopeditors/DesktopEditors
+main_bin: DesktopEditors
+icon: /usr/share/icons/hicolor/256x256/apps/onlyoffice-desktopeditors.png
+desktop: /usr/share/applications/onlyoffice-desktopeditors.desktop
+extra_paths: [/opt/onlyoffice/desktopeditors]
+data_from: /opt/onlyoffice/desktopeditors
+runtime_from: /opt/onlyoffice/desktopeditors
+debloat: mesa
+hooks: [fix-namespaces.hook]
