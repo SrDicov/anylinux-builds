@@ -1,0 +1,20 @@
+# reaper: DAW de Cockos 7.80 PINNEADO (excepcion a la regla sin-versiones:
+# el tarball oficial lleva la version en el nombre, no hay URL estable,
+# ni git publico ni AUR. Bump = cambiar `url` (el resto de rutas no
+# llevan version). ETag del fichero inmutable: no reconstruye solo.
+# El binario necesita su arbol (libSwell, Plugins/, InstallData/):
+# url instala el binario suelto y patch_run escenifica el resto a /opt.
+name: reaper
+source:
+  type: url
+  url: https://www.reaper.fm/files/7.x/reaper780_linux_x86_64.tar.xz
+  url_bin: reaper_linux_x86_64/REAPER/reaper
+bin: /usr/bin/reaper
+icon: DUMMY
+desktop: DUMMY
+main_bin: reaper
+extra_paths: [/opt/REAPER]
+data_from: /opt/REAPER
+debloat: common
+patch_run:
+  - cp -r /tmp/payload-ex/reaper_linux_x86_64/REAPER /opt/REAPER
