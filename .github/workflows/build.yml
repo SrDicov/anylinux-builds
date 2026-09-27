@@ -111,10 +111,10 @@ jobs:
           gh release view "$TAG" >/dev/null 2>&1 || \
             gh release create "$TAG" --title "Continuous builds" \
               --notes "Rolling AnyLinux AppImages. Rebuilt daily when upstream changes."
-          for f in release-assets/*.AppImage; do
+          for f in release-assets/*.AppImage*; do
             gh release delete-asset "$TAG" "$(basename "$f")" --yes >/dev/null 2>&1 || true
           done
-          gh release upload "$TAG" release-assets/*.AppImage --clobber
+          gh release upload "$TAG" release-assets/*.AppImage* --clobber
 
       - name: Update version state
         run: |
