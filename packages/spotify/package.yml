@@ -26,3 +26,6 @@ link_run:
   - mkdir -p "$APPDIR/lib/spotify"
   - ln -sfn ../../bin/icudtl.dat "$APPDIR/lib/spotify/icudtl.dat"
   - ln -sfn ../../bin/v8_context_snapshot.bin "$APPDIR/lib/spotify/v8_context_snapshot.bin"
+  - ln -sfn ../../bin/resources.pak "$APPDIR/lib/spotify/resources.pak"
+  - ln -sfn ../../bin/chrome_100_percent.pak "$APPDIR/lib/spotify/chrome_100_percent.pak"
+  - ln -sfn ../../bin/chrome_200_percent.pak "$APPDIR/lib/spotify/chrome_200_percent.pak"
