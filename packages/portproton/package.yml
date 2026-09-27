@@ -23,3 +23,4 @@ hooks: [fix-namespaces.hook]
 # superuser!") y CI corre como root: mismo bypass que steam.
 patch_run:
   - python3 -c 'p="/usr/bin/portproton"; s=open(p).read(); old="\"$(id -u)\" == \"0\""; assert s.count(old)==1; open(p,"w").write(s.replace(old,"\"$(id -u)\" == \"69\""))'
+  - echo "--- DIAG xvfb ---"; xvfb-run -a true && echo "DIAG-XVFB-OK" || echo "DIAG-XVFB-BROKEN"; ldd /usr/bin/Xvfb 2>/dev/null | grep -i "not found" || echo "DIAG-XVFB-LIBS-OK"; df -h /tmp / | tail -3; ls /usr/share/X11/xorg.conf.d/ 2>/dev/null || echo "DIAG-NO-XORGCONF-D"
