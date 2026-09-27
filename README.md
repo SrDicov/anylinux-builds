@@ -9,7 +9,7 @@ needs — no host libc dependency. Only rebuilds when upstream changes.
 ## Add an app
 
 ```sh
-cp -r packages/htop packages/myapp
+cp -r packages/vesktop-bin packages/myapp
 $EDITOR packages/myapp/package.yml   # 10 fields, no versions pinned
 git add packages/myapp && git commit -m "feat: add myapp"
 ```

@@ -1,0 +1,19 @@
+# brave: navegador Chromium (release estable). AUR *-bin: precompilado.
+# OJO: /usr/bin/brave es un script con `exec /opt/brave-bin/brave`
+# absoluto; se empaqueta el binario REAL (fuga por ruta absoluta).
+# Chromium: runtime GL/ffmpeg desde el exe dir + sandbox desactivado.
+name: brave
+source:
+  type: aur
+  pkg: brave-bin
+bin: /opt/brave-bin/brave
+main_bin: brave
+icon: /usr/share/icons/hicolor/256x256/apps/brave-desktop.png
+desktop: /usr/share/applications/brave-browser.desktop
+extra_paths: [/opt/brave-bin]
+data_from: /opt/brave-bin
+runtime_from: /opt/brave-bin
+debloat: mesa
+hooks: [fix-namespaces.hook]
+app_env: [ELECTRON_DISABLE_SANDBOX=1]
+test_args: [--no-sandbox, --version]

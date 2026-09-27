@@ -1,0 +1,16 @@
+# portproton: launcher de juegos Windows (Proton/Wine). AUR: script
+# bash + GUI yad; el Proton se descarga en RUNTIME a ~/PortProton.
+# bin es el script /usr/bin/portproton (como bin_steam.sh en steam).
+# yad va empaquetado (los dialogos son requisito duro en cualquier host);
+# bwrap/proton los resuelve el script en el host/usuario.
+name: portproton
+source:
+  type: aur
+  pkg: portproton
+bin: /usr/bin/portproton
+main_bin: portproton
+icon: /usr/share/icons/hicolor/scalable/apps/ru.linux_gaming.PortProton.svg
+desktop: /usr/share/applications/ru.linux_gaming.PortProton.desktop
+extra_paths: [/usr/bin/yad]
+debloat: mesa
+hooks: [fix-namespaces.hook]

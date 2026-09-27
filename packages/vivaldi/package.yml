@@ -1,0 +1,22 @@
+# vivaldi: navegador Chromium. Paquete OFICIAL de Arch (extra), no AUR.
+# OJO: /usr/bin/vivaldi-stable es symlink; se empaqueta el binario REAL
+# de /opt (regla wrapper-scripts: nada de rutas absolutas al sistema).
+# Chromium: runtime GL/ffmpeg desde el exe dir + sandbox desactivado
+# (zygote muere dentro de la imagen); smoke directo con --version.
+name: vivaldi
+source:
+  type: pacman
+  pkg: vivaldi
+bin: /opt/vivaldi/vivaldi
+# El .desktop trae Exec=/usr/bin/vivaldi-stable; el binario real
+# desplegado es vivaldi: declararlo o quick-sharun aborta buscandolo.
+main_bin: vivaldi
+icon: /usr/share/icons/hicolor/256x256/apps/vivaldi.png
+desktop: /usr/share/applications/vivaldi-stable.desktop
+extra_paths: [/opt/vivaldi]
+data_from: /opt/vivaldi
+runtime_from: /opt/vivaldi
+debloat: mesa
+hooks: [fix-namespaces.hook]
+app_env: [ELECTRON_DISABLE_SANDBOX=1]
+test_args: [--no-sandbox, --version]

@@ -4,11 +4,12 @@ Cloud builder for sharun-based AppImages. One generic pipeline, N declarative re
 
 ## What lives where
 
-- `packages/<app>/package.yml` — the only per-app file. Copy `packages/htop`, edit values.
+- `packages/<app>/package.yml` — the only per-app file. Copy `packages/vesktop-bin`, edit values.
 - `builder/build.sh` — canonical flow (pacman + debloat + install to `/usr` + quick-sharun + `--make-appimage` + `--test`). Don't invent another flow.
 - `builder/pinned.sh` — single bump point for quick-sharun/debloat URLs + container.
 - `builder/check-update.sh` + `builder/discover.py` — version fingerprint vs `versions.json` state. Workflow updates state; hand-edit only to force rebuilds.
-- `.github/workflows/build.yml` — cron 24h + manual dispatch + push; rolling `continuous` release.
+- `.github/workflows/build.yml` — cron 24h + manual dispatch + push; rolling `continuous` release. Push touching `packages/<app>` forces rebuild (`--force-include`) even if version unchanged.
+- `builder/recipe.py` — stdlib-only parser + schema check. Restricted YAML only: scalars, one-level `source:`, inline `[a, b]` or block `- item` lists. No anchors/multiline/nesting.
 
 ## Binding packaging rules (from upstream quick-sharun)
 
@@ -16,6 +17,9 @@ Cloud builder for sharun-based AppImages. One generic pipeline, N declarative re
 - Install to `/usr` first, pass binaries to quick-sharun. Never copy libs manually; never touch `$APPDIR/shared`; never strip bundled libs.
 - Ignore linuxdeploy/AppImageKit/appimage-builder guidance — wrong for this model.
 - AUR builds run as non-root user (`makepkg` forbids root); official pkgs as root.
+- Required keys: `name, bin, icon, desktop`; plus `main_bin` when `desktop: DUMMY`, or `source.type: url` (except `.deb`), or `git`. `git` also needs `repo+ref+build_out`. Archive `url` needs `url_bin`; `.deb` unpacks to `/`, no `main_bin`.
+- `url_version`: `github:owner/repo`, `apt <Packages-url> <pkg>`, else ETag/Last-Modified HEAD fingerprint.
+- Short-lived CLI/TUI: set `test_args: [--version]`; otherwise `--test` requires the app to stay alive 12s.
 - `url` sources: single binary, or archive (needs `url_bin` inner path).
   Needs `main_bin`.
 - `git` sources: shallow-clone ref, run `build_run` lines in it, install

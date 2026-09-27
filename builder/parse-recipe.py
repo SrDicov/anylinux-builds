@@ -2,6 +2,7 @@
 """Print package.yml as shell-safe KEY='value' assignments for build.sh."""
 
 import os
+import shlex
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -9,12 +10,20 @@ from recipe import load_recipe  # noqa: E402
 
 
 def sh(value):
-    return "'" + str(value).replace("'", "'\\''") + "'"
+    return shlex.quote(str(value))
 
 
 def main():
     recipe_dir = sys.argv[1]
     data = load_recipe(os.path.join(recipe_dir, "package.yml"))
+    if len(sys.argv) > 3 and sys.argv[2] == "--get":
+        key = sys.argv[3]
+        vals = data.get(key, []) or []
+        if key == "app_env":
+            for line in vals:
+                assert "=" in line, line
+        sys.stdout.write("\n".join(vals) + ("\n" if vals else ""))
+        return
     src = data.get("source", {})
     out = {
         "RECIPE_NAME": data["name"],

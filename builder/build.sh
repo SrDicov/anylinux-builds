@@ -121,13 +121,7 @@ git)
 	# the resulting binary is installed to /usr for bundling.
 	rm -rf /tmp/src-build
 	git clone --depth 1 --branch "$SOURCE_REF" "$SOURCE_REPO" /tmp/src-build
-	python3 - "$RECIPE_DIR" > /tmp/build-run.sh <<'PYEOF'
-import sys
-sys.path.insert(0, 'builder')
-from recipe import load_recipe
-data = load_recipe(sys.argv[1] + '/package.yml')
-sys.stdout.write('\n'.join(data.get('build_run', []) or []) + '\n')
-PYEOF
+	python3 "$BUILDER_DIR/parse-recipe.py" "$RECIPE_DIR" --get build_run > /tmp/build-run.sh
 	( cd /tmp/src-build && sh /tmp/build-run.sh )
 	install -Dm755 "/tmp/src-build/$RECIPE_BUILD_OUT" "/usr/bin/$RECIPE_MAIN_BIN"
 	;;
@@ -140,13 +134,7 @@ esac
 echo "=== bundling AppImage ==="
 # Recipe-owned post-install patches (e.g. allow root for CI smoke tests,
 # loader fallbacks). Runs after install, before bundling.
-python3 - "$RECIPE_DIR" > /tmp/patch-run.sh <<'PYEOF'
-import sys
-sys.path.insert(0, 'builder')
-from recipe import load_recipe
-data = load_recipe(sys.argv[1] + '/package.yml')
-sys.stdout.write('\n'.join(data.get('patch_run', []) or []) + '\n')
-PYEOF
+python3 "$BUILDER_DIR/parse-recipe.py" "$RECIPE_DIR" --get patch_run > /tmp/patch-run.sh
 if [ -s /tmp/patch-run.sh ]; then
 	echo "=== applying recipe patches ==="
 	sh /tmp/patch-run.sh
@@ -204,16 +192,7 @@ if [ -n "$RECIPE_RUNTIME_FROM" ]; then
 fi
 
 # Default env baked into the image (sharun sources $APPDIR/.env).
-python3 - "$RECIPE_DIR" > /tmp/app-env-lines <<'PYEOF'
-import sys
-sys.path.insert(0, 'builder')
-from recipe import load_recipe
-data = load_recipe(sys.argv[1] + '/package.yml')
-lines = data.get('app_env', []) or []
-for line in lines:
-    assert '=' in line, line
-sys.stdout.write('\n'.join(lines) + ('\n' if lines else ''))
-PYEOF
+python3 "$BUILDER_DIR/parse-recipe.py" "$RECIPE_DIR" --get app_env > /tmp/app-env-lines
 if [ -s /tmp/app-env-lines ]; then
 	APPENV_FILE="${APPDIR:-$PWD/AppDir}/.env"
 	touch "$APPENV_FILE"

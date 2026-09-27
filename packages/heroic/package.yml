@@ -1,0 +1,18 @@
+# heroic: Heroic Games Launcher (Electron). AUR *-bin: reempaqueta
+# el .pacman oficial del upstream, sin compilar.
+# /usr/bin/heroic es symlink a /opt/Heroic/heroic: se empaqueta el REAL.
+# Electron: data + runtime junto al binario, sandbox desactivado.
+name: heroic
+source:
+  type: aur
+  pkg: heroic-games-launcher-bin
+bin: /opt/Heroic/heroic
+icon: DUMMY
+desktop: DUMMY
+main_bin: heroic
+extra_paths: [/opt/Heroic]
+data_from: /opt/Heroic
+runtime_from: /opt/Heroic
+debloat: mesa
+hooks: [fix-namespaces.hook]
+app_env: [ELECTRON_DISABLE_SANDBOX=1]

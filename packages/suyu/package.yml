@@ -15,8 +15,6 @@ build_out: build/bin/suyu
 extra_paths: [/usr/bin/suyu-cmd]
 build_deps: [cmake, ninja, nasm, pkgconf, autoconf, glslang, qt6-base, qt6-svg, qt6-charts, qt6-multimedia, qt6-wayland, boost, ffmpeg, sdl3, libusb, openssl, alsa-lib, libpulse, libx11, libxext, libxrandr, libxcursor, libxi, libxfixes, libxkbcommon, libxss, libxtst, wayland, wayland-protocols, libdecor, libdrm, mesa, vulkan-headers, vulkan-utility-libraries, vulkan-icd-loader, zstd, lz4, zlib]
 debloat: mesa
-hooks: []
-host_drivers: false
 build_run:
   - git submodule update --init --depth 1 --jobs $(nproc)
   - sed -i -E 's/\b(framew|frame|gpuidle|draw|schedw|build|acquire|present) \* ms/static_cast<double>(\1) * ms/g; s/\(frame > known \? frame - known : 0\) \* ms/(frame > known ? static_cast<double>(frame - known) : 0.0) * ms/' src/video_core/renderer_vulkan/vk_stall_probe.h

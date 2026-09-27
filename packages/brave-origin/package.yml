@@ -1,0 +1,21 @@
+# brave-origin: variante Origin-trial de Brave (mismo upstream
+# brave-browser, releases brave-origin-*). AUR *-bin: precompilado.
+# OJO: /usr/bin/brave-origin es un script con
+# `exec /opt/brave-origin-bin/brave-origin` absoluto; se empaqueta
+# el binario REAL (fuga por ruta absoluta).
+# Chromium: runtime GL/ffmpeg desde el exe dir + sandbox desactivado.
+name: brave-origin
+source:
+  type: aur
+  pkg: brave-origin-bin
+bin: /opt/brave-origin-bin/brave-origin
+main_bin: brave-origin
+icon: /usr/share/icons/hicolor/256x256/apps/brave-origin.png
+desktop: /usr/share/applications/brave-origin.desktop
+extra_paths: [/opt/brave-origin-bin]
+data_from: /opt/brave-origin-bin
+runtime_from: /opt/brave-origin-bin
+debloat: mesa
+hooks: [fix-namespaces.hook]
+app_env: [ELECTRON_DISABLE_SANDBOX=1]
+test_args: [--no-sandbox, --version]

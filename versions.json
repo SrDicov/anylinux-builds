@@ -1,9 +1,5 @@
 {
-  "concord": "2.6.0-1",
-  "htop": "3.5.3-1",
-  "opencode": "v1.18.32",
   "steam": "1.0.0.87",
   "suyu": "5949cab3ba93233ddd1c319bfc6f010f6cfa910a",
-  "vesktop-bin": "1.6.7-5",
-  "yt-dlp": "2026.08.19"
+  "vesktop-bin": "1.6.7-5"
 }

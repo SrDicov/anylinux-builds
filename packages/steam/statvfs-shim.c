@@ -113,204 +113,50 @@ static int streq_n(const char *a, const char *b, unsigned long n) {
 	return 1;
 }
 
-/* 1 if STEAM_IMG_ROOT= appears in /proc/self/environ, else 0. */
+/* env key probe via /proc/self/environ (raw syscalls, no libc). */
+static int env_has(const char *key, unsigned long klen) {
+	char buf[4096 + 16];
+	long fd, r, i;
+	unsigned long u, off = 0;
+	fd = raw_open("/proc/self/environ");
+	if (fd < 0)
+		return 0;
+	for (;;) {
+		r = raw_rw(SYS_read, fd, buf + off, sizeof(buf) - off);
+		if (r <= 0)
+			break;
+		u = off + (unsigned long)r;
+		for (i = 0; i + (long)klen < (long)u; i++) {
+			if (streq_n(buf + i, key, klen))
+				break;
+		}
+		if (i + (long)klen < (long)u) {
+			raw_close(fd);
+			return 1;
+		}
+		off = u > 16 ? 16 : u;
+		{
+			unsigned long j;
+			for (j = 0; j < off; j++)
+				buf[j] = buf[u - off + j];
+		}
+	}
+	raw_close(fd);
+	return 0;
+}
+
+/* 1 if STEAM_IMG_ROOT= appears in environ, else 0. */
 static int want_fake(void) {
 	static int cached = -1;
-	static const char key[] = "STEAM_IMG_ROOT=";
-	char buf[4096 + 15];
-	long fd, r, i;
-	unsigned long u, off = 0;
 	if (cached != -1)
 		return cached;
-	cached = 0;
-	fd = raw_open("/proc/self/environ");
-	if (fd < 0)
-		return 0;
-	for (;;) {
-		r = raw_rw(
-#ifdef __x86_64__
-			SYS_read,
-#else
-			SYS_read,
-#endif
-			fd, buf + off, sizeof(buf) - off);
-		if (r <= 0)
-			break;
-		u = off + (unsigned long)r;
-		for (i = 0; i + 15 < u; i++) {
-			if (streq_n(buf + i, key, 15)) {
-				cached = 1;
-				break;
-			}
-		}
-		if (cached)
-			break;
-		/* Carry up to 15 bytes so keys split across reads still match. */
-		off = u > 15 ? 15 : u;
-		{
-			unsigned long j;
-			for (j = 0; j < off; j++)
-				buf[j] = buf[u - off + j];
-		}
-	}
-	raw_close(fd);
+	cached = env_has("STEAM_IMG_ROOT=", 15);
 	return cached;
 }
 
-/* 1 if STEAM_SHIM_DEBUG= appears in environ. Checked lazily, cached. */
-static int debug_on(void) {
-	static int cached = -1;
-	static const char key[] = "STEAM_SHIM_DEBUG=";
-	char buf[1024 + 17];
-	long fd, r, i;
-	unsigned long u, off = 0;
-	if (cached != -1)
-		return cached;
-	cached = 0;
-	fd = raw_open("/proc/self/environ");
-	if (fd < 0)
-		return 0;
-	for (;;) {
-		r = raw_rw(
-#ifdef __x86_64__
-			SYS_read,
-#else
-			SYS_read,
-#endif
-			fd, buf + off, sizeof(buf) - off);
-		if (r <= 0)
-			break;
-		u = off + (unsigned long)r;
-		for (i = 0; i + 18 < u; i++) {
-			if (streq_n(buf + i, key, 17)) {
-				cached = 1;
-				break;
-			}
-		}
-		if (cached || u < sizeof(buf))
-			break;
-		off = 17;
-		{
-			unsigned long j;
-			for (j = 0; j < off; j++)
-				buf[j] = buf[u - off + j];
-		}
-	}
-	raw_close(fd);
-	return cached;
-}
 
-static void dbg_fake(void) {
-	static const char m[] = "steam-shim: faked statvfs space\n";
-	unsigned long n = 0;
-	while (m[n])
-		n++;
-	if (debug_on())
-		raw_rw(
-#ifdef __x86_64__
-			SYS_write,
-#else
-			SYS_write,
-#endif
-			2, m, n);
-}
 
-/* Verbose: why a call was NOT faked (0 = gate values, 1 = env). */
-static void dbg_skip(int which) {
-	static const char m0[] = "steam-shim: skip (fs writable or has space)\n";
-	static const char m1[] = "steam-shim: skip (no STEAM_IMG_ROOT in environ)\n";
-	const char *m = which ? m1 : m0;
-	unsigned long n = 0;
-	if (!debug_on())
-		return;
-	while (m[n])
-		n++;
-	raw_rw(
-#ifdef __x86_64__
-		SYS_write,
-#else
-		SYS_write,
-#endif
-		2, m, n);
-}
 
-#define SYS_readlinkat_x64 267
-#define SYS_readlink_x86 85
-static long raw_readlink_cwd(char *b, unsigned long c) {
-	static const char p[] = "/proc/self/cwd";
-	long r;
-#ifdef __x86_64__
-	__asm__ volatile ("syscall"
-		: "=a" (r)
-		: "a" ((long)SYS_readlinkat_x64), "D" ((long)AT_FDCWD), "S" ((long)p), "d" ((long)b), "r" ((long)c)
-		: "rcx", "r11", "memory");
-#else
-	__asm__ volatile ("int $0x80"
-		: "=a" (r)
-		: "a" ((long)SYS_readlink_x86), "b" ((long)p), "c" ((long)b), "d" ((long)c)
-		: "memory");
-#endif
-	return r;
-}
-
-/* Verbose: log every intercepted path (capped) plus caller CWD. */
-static void dbg_call(const char *p) {
-	static const char pre[] = "steam-shim: statvfs ";
-	static const char mid[] = " cwd=";
-	char cwd[256];
-	unsigned long n = 0;
-	long r;
-	if (!debug_on())
-		return;
-	raw_rw(
-#ifdef __x86_64__
-		SYS_write,
-#else
-		SYS_write,
-#endif
-		2, pre, sizeof(pre) - 1);
-	while (n < 200 && p[n])
-		n++;
-	if (n)
-		raw_rw(
-#ifdef __x86_64__
-			SYS_write,
-#else
-			SYS_write,
-#endif
-			2, p, n);
-	raw_rw(
-#ifdef __x86_64__
-		SYS_write,
-#else
-		SYS_write,
-#endif
-		2, mid, sizeof(mid) - 1);
-	r = raw_readlink_cwd(cwd, sizeof(cwd) - 1);
-	if (r > 0)
-		raw_rw(
-#ifdef __x86_64__
-			SYS_write,
-#else
-			SYS_write,
-#endif
-			2, cwd, (unsigned long)r);
-	else
-		raw_rw(
-#ifdef __x86_64__
-			SYS_write,
-#else
-			SYS_write,
-#endif
-			2, "(cwd-unreadable)", 16);
-	raw_rw(
-#ifdef __x86_64__
-		SYS_write,
-#else
-		SYS_write,
-#endif
-		2, "\n", 1);
-}
 
 /* ---- execve router: run ELF binaries whose INTERP is missing via the
  * bundled loaders, WITHOUT touching files on disk (keeps Valve's
@@ -385,49 +231,11 @@ static long err_execve(const char *p, char *const *a, char *const *e) {
 	set_err(r);
 	return -1;
 }
-/* Verbose: log a rerouted exec (capped path). */
-static void dbg_route(const char *p, const char *ld) {
-	static const char pre[] = "steam-shim: routed exec ";
-	char buf[200];
-	unsigned long n = 0, m = 0;
-	if (!debug_on())
-		return;
-	while (pre[n]) {
-		buf[n] = pre[n];
-		n++;
-	}
-	m = 0;
-	while (n < 110 && p[m]) {
-		buf[n] = p[m];
-		n++;
-		m++;
-	}
-	buf[n++] = ' ';
-	buf[n++] = 'v';
-	buf[n++] = 'i';
-	buf[n++] = 'a';
-	buf[n++] = ' ';
-	m = 0;
-	while (n < (unsigned long)(sizeof(buf) - 2) && ld[m])
-		buf[n++] = ld[m++];
-	buf[n++] = '\n';
-	raw_rw(
-#ifdef __x86_64__
-		SYS_write,
-#else
-		SYS_write,
-#endif
-		2, buf, n);
-}
 /* Read exactly c bytes (short reads looped). Returns 0 on success. */
 static int r_read_all(long fd, char *b, unsigned long c) {
 	while (c) {
 		long r = raw_rw(
-#ifdef __x86_64__
-			SYS_read,
-#else
-			SYS_read,
-#endif
+SYS_read,
 			fd, b, c);
 		if (r <= 0)
 			return -1;
@@ -442,11 +250,7 @@ static int r_discard(long fd, unsigned long c) {
 	while (c) {
 		unsigned long step = c > sizeof(trash) ? sizeof(trash) : c;
 		long r = raw_rw(
-#ifdef __x86_64__
-			SYS_read,
-#else
-			SYS_read,
-#endif
+SYS_read,
 			fd, trash, step);
 		if (r <= 0)
 			return -1;
@@ -712,7 +516,6 @@ static long route_exec(const char *path, char *const *argv, char *const *envp,
 			ldcand[i] = ld[i];
 		ldcand[dl] = 0;
 		nargv[0] = ldcand;
-		dbg_route(path, ldcand);
 		raw_execve(ldcand, nargv, nenvp);
 		if (!ld[dl])
 			break;
@@ -728,11 +531,7 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
 		return err_execve(path, argv, (char *const *)envp);
 	return route_exec(path, argv, envp, is64);
 }
-/* exec family -> our execve (covers fork+exec users; posix_spawn is rare
- * in this stack and falls through to the kernel error if unresolved). */
-int execv(const char *p, char *const a[]) {
-	return execve(p, a, (char *const *)environ);
-}
+
 int execvpe(const char *f, char *const a[], char *const e[]) {
 	unsigned long i;
 	if (!f)
@@ -790,58 +589,7 @@ int execvpe(const char *f, char *const a[], char *const e[]) {
 int execvp(const char *f, char *const a[]) {
 	return execvpe(f, a, (char *const *)environ);
 }
-/* execl family via stdarg (compiler-provided, freestanding-safe). */
-#include <stdarg.h>
-int execl(const char *p, const char *a0, ...) {
-	char *av[64];
-	unsigned long n = 0;
-	va_list ap;
-	va_start(ap, a0);
-	av[n++] = (char *)a0;
-	while (n < 63) {
-		char *a = va_arg(ap, char *);
-		av[n++] = a;
-		if (!a)
-			break;
-	}
-	va_end(ap);
-	av[63] = 0;
-	return execve(p, av, (char *const *)environ);
-}
-int execle(const char *p, const char *a0, ...) {
-	char *av[64];
-	char *const *e = 0;
-	unsigned long n = 0;
-	va_list ap;
-	va_start(ap, a0);
-	av[n++] = (char *)a0;
-	while (n < 63) {
-		char *a = va_arg(ap, char *);
-		av[n++] = a;
-		if (!a)
-			break;
-	}
-	e = va_arg(ap, char *const *);
-	va_end(ap);
-	av[63] = 0;
-	return execve(p, av, (char *const *)e);
-}
-int execlp(const char *f, const char *a0, ...) {
-	char *av[64];
-	unsigned long n = 0;
-	va_list ap;
-	va_start(ap, a0);
-	av[n++] = (char *)a0;
-	while (n < 63) {
-		char *a = va_arg(ap, char *);
-		av[n++] = a;
-		if (!a)
-			break;
-	}
-	va_end(ap);
-	av[63] = 0;
-	return execvpe(f, av, (char *const *)environ);
-}
+
 
 #ifdef __x86_64__
 /* x86_64 libc struct statvfs == statvfs64 layout. */
@@ -874,11 +622,9 @@ static void fill_vfs(struct vfs *o, const u64 *kb) {
 static void maybe_fake(struct vfs *o) {
 	u64 want;
 	if ((o->flag & 1u) != 1u || o->bavail != 0) {
-		dbg_skip(0);
 		return;
 	}
 	if (!want_fake()) {
-		dbg_skip(1);
 		return;
 	}
 	want = (8ull * 1024 * 1024 * 1024) / (o->frsize ? o->frsize : 4096u);
@@ -886,7 +632,6 @@ static void maybe_fake(struct vfs *o) {
 		o->blocks = want;
 	o->bfree = want;
 	o->bavail = want;
-	dbg_fake();
 }
 /* Last resort: kernel refused statfs AND fstatfs (broken compat), but the
  * path exists (open worked) and we run inside the image: report 8GB. */
@@ -912,7 +657,6 @@ int statvfs(const char *p, struct vfs *o) {
 		u64 w[15];
 	} kb;
 	long r, fd;
-	dbg_call(p);
 	r = raw_statfs(p, &kb);
 	if (r == 0) {
 		fill_vfs(o, kb.w);
@@ -934,7 +678,6 @@ int statvfs(const char *p, struct vfs *o) {
 	if (!want_fake())
 		return -1;
 	fill_synth(o);
-	dbg_fake();
 	return 0;
 }
 int statvfs64(const char *p, struct vfs *o) {
@@ -979,11 +722,9 @@ static void maybe_fake64(struct vfs64 *o) {
 	u64 want;
 	u32 fs = o->frsize ? o->frsize : 4096u;
 	if ((o->flag & 1u) != 1u || o->bavail != 0) {
-		dbg_skip(0);
 		return;
 	}
 	if (!want_fake()) {
-		dbg_skip(1);
 		return;
 	}
 	if (fs == 1024)
@@ -1000,7 +741,6 @@ static void maybe_fake64(struct vfs64 *o) {
 		o->blocks = want;
 	o->bfree = want;
 	o->bavail = want;
-	dbg_fake();
 }
 /* Last resort: kernel refused statfs64 AND fstatfs64 (broken compat), but
  * the path exists (open worked) and we run inside the image: report 8GB. */
@@ -1037,7 +777,6 @@ static void fill_vfs32(struct vfs32 *o, const struct vfs64 *t) {
 int statvfs64(const char *p, struct vfs64 *o) {
 	char kb[84];
 	long r, fd;
-	dbg_call(p);
 	r = raw_statfs(p, kb);
 	if (r == 0) {
 		fill_vfs64(o, kb);
@@ -1059,7 +798,6 @@ int statvfs64(const char *p, struct vfs64 *o) {
 	if (!want_fake())
 		return -1;
 	fill_synth64(o);
-	dbg_fake();
 	return 0;
 }
 int statvfs(const char *p, struct vfs32 *o) {

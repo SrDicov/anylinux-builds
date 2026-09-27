@@ -1,0 +1,17 @@
+# waterfox: fork de Firefox. AUR *-bin: reempaqueta el tarball oficial.
+# /usr/bin/waterfox es symlink a /opt/waterfox/waterfox: se empaqueta
+# el REAL. El dir del exe trae helpers ELF + datos (omni.ja, browser/):
+# extra_paths para los ELF, data_from para el resto.
+# Firefox no necesita sandbox-env ni runtime GL (usa el del sistema/mesa).
+name: waterfox
+source:
+  type: aur
+  pkg: waterfox-bin
+bin: /opt/waterfox/waterfox
+main_bin: waterfox
+icon: /usr/share/icons/hicolor/128x128/apps/waterfox.png
+desktop: /usr/share/applications/waterfox.desktop
+extra_paths: [/opt/waterfox]
+data_from: /opt/waterfox
+debloat: mesa
+test_args: [--version]
