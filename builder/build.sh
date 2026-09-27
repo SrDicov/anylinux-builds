@@ -81,7 +81,18 @@ aur)
 	rm -rf /tmp/aur-build
 	mkdir -p /tmp/aur-build
 	chown builder:builder /tmp/aur-build
-	su builder -c "git clone https://aur.archlinux.org/$SOURCE_PKG.git /tmp/aur-build/$SOURCE_PKG"
+	# aur.archlinux.org flakea (SSL EOF): reintentar el clone como el
+	# wget --tries del resto del flujo. Borrado previo o el reintento
+	# choca con el clon parcial.
+	for i in 1 2 3 4 5; do
+		rm -rf /tmp/aur-build/$SOURCE_PKG
+		if su builder -c "git clone https://aur.archlinux.org/$SOURCE_PKG.git /tmp/aur-build/$SOURCE_PKG"; then
+			break
+		fi
+		echo "WARN: AUR clone attempt $i failed, retrying..." >&2
+		sleep 15
+		[ "$i" = 5 ] && exit 1
+	done
 	# Fresh containers have empty keyrings: import the upstream PGP keys
 	# the PKGBUILD declares (e.g. spotify's repo Release key) before
 	# makepkg verifies signatures. No validpgpkeys -> no-op.

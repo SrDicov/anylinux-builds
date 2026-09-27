@@ -13,6 +13,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUILDER = os.path.join(ROOT, "builder")
@@ -21,13 +22,27 @@ STATE = os.path.join(ROOT, "versions.json")
 
 
 def check(recipe_dir):
-    out = subprocess.run(
-        ["sh", os.path.join(BUILDER, "check-update.sh"), recipe_dir],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return out.stdout.strip()
+    # aur.archlinux.org flakea (SSL EOF): reintentar antes de saltar el
+    # paquete, o un fallo transitorio lo saca de la matriz del run.
+    last = None
+    for attempt in (1, 2, 3):
+        try:
+            out = subprocess.run(
+                ["sh", os.path.join(BUILDER, "check-update.sh"), recipe_dir],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            return out.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            last = e
+            print(
+                f"WARN: version check failed for {recipe_dir} "
+                f"(attempt {attempt}/3): {e.stderr.strip().splitlines()[-1] if e.stderr.strip() else e}",
+                file=sys.stderr,
+            )
+            time.sleep(15)
+    raise last
 
 
 def main():
