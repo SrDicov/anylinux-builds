@@ -4,8 +4,7 @@
 # el binario REAL de /opt. El .desktop trae Exec=/usr/bin/... distinto
 # al binario desplegado: main_bin lo declara o quick-sharun aborta.
 # Sin test_args: no hay flag de salida rapida (--version no existe);
-# el --test por defecto la deja 12s viva. Si el zygote muere como root,
-# el follow-up es parchear el launcher con --no-sandbox (precedente steam).
+# el --test por defecto la deja 12s viva.
 name: onlyoffice
 source:
   type: aur
@@ -24,13 +23,12 @@ build_deps: [atk, gst-libav, libxkbcommon-x11, xdg-utils]
 debloat: mesa
 hooks: [fix-namespaces.hook]
 # El .desktop trae Exec=/usr/bin/onlyoffice-desktopeditors (el script
-# wrapper). Apuntar al binario REAL: con el Exec viejo, el flujo de
-# refresh-desktop de sharun no valida el destino y cae al dialogo
-# interactivo, que muere con "Cannot find suitable binary to perform
-# operation!" (no hay terminal en el contenedor) y tumba el --test.
+# wrapper): se apunta al binario REAL con --no-sandbox. Sin el flag, el
+# helper zygote (editors_helper --type=zygote) muere como root (CI) y la
+# app sale con codigo 0 a los ~5s; paridad con steam (-no-cef-sandbox).
 patch_run:
-  - sed -i 's|^Exec=.*|Exec=DesktopEditors %F|' /usr/share/applications/onlyoffice-desktopeditors.desktop
-  - grep -q "^Exec=DesktopEditors" /usr/share/applications/onlyoffice-desktopeditors.desktop && echo onlyoffice-exec-patched
+  - sed -i 's|^Exec=.*|Exec=DesktopEditors --no-sandbox %F|' /usr/share/applications/onlyoffice-desktopeditors.desktop
+  - grep -q "^Exec=DesktopEditors --no-sandbox" /usr/share/applications/onlyoffice-desktopeditors.desktop && echo onlyoffice-exec-patched
 # quick-sharun aplana los helpers a bin/ (bin/x2t) pero DesktopEditors
 # los busca relativos al exe (bin/converter/x2t): recrear el arbol.
 link_run:
