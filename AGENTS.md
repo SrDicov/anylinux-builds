@@ -43,6 +43,10 @@ Cloud builder for sharun-based AppImages. One generic pipeline, N declarative re
 - Chromium dlopens its GL stack + ffmpeg from the exe dir (never deployed
   by quick-sharun): use `runtime_from: /opt/<app>` or the GPU process dies
   and no frame is ever presented (app runs headless, no window).
+- quick-sharun flattens helper binaries into `bin/` (`bin/x2t`): if the app
+  resolves helpers relative to the exe dir (`bin/converter/x2t`), recreate
+  the tree with `link_run` (symlinks to the deployed stubs) or the app
+  quits at startup (verified: OnlyOffice).
 
 ## Validate locally (Arch)
 

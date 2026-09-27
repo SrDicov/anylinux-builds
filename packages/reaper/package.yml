@@ -15,6 +15,10 @@ desktop: DUMMY
 main_bin: reaper
 extra_paths: [/opt/REAPER]
 data_from: /opt/REAPER
+# REAPER carga libSwell.so por ruta relativa al exe (igual que el GL de
+# Chromium): tiene que estar junto al binario o muere con
+# "cannot open shared object file" en el --test.
+runtime_from: /opt/REAPER
 # REAPER es un ELF dynamic enlazado a ALSA + X11 + GTK: sin estas el
 # quick-sharun aborta con "libasound.so.2 => not found".
 build_deps: [alsa-lib, gtk3, libx11, libxext, libxss, dbus]

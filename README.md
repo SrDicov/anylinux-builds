@@ -35,7 +35,10 @@ Electron `icudtl.dat`/`*.pak`/`locales`/`app.asar`; never ELFs),
 `app_env` (optional: `KEY=VALUE` lines baked into the image env),
 `runtime_from` (optional: dir whose `*.so*` are staged next to the binary —
 Chromium `libEGL`/`libGLESv2`/SwiftShader/`libffmpeg`; skipped if already
-deployed, so sharun libs are never shadowed).
+deployed, so sharun libs are never shadowed),
+`link_run` (optional: shell lines after bundling, before `--make-appimage`,
+with `$APPDIR` set — recreate exe-relative helper trees that quick-sharun
+flattens, e.g. `bin/converter/x2t -> ../x2t`).
 
 ## How it works
 

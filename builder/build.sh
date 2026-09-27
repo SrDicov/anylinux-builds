@@ -207,6 +207,16 @@ if [ -s /tmp/app-env-lines ]; then
 	cat /tmp/app-env-lines
 fi
 
+# Recipe-owned post-deploy fixups. quick-sharun flattens deployed helper
+# binaries into bin/ (bin/x2t), breaking apps that resolve helpers
+# relative to the exe dir (bin/converter/x2t). Recreate those trees here
+# (symlinks to the deployed stubs survive --make-appimage).
+python3 "$BUILDER_DIR/parse-recipe.py" "$RECIPE_DIR" --get link_run > /tmp/link-run.sh
+if [ -s /tmp/link-run.sh ]; then
+	echo "=== applying recipe link fixes ==="
+	APPDIR="${APPDIR:-$PWD/AppDir}" sh /tmp/link-run.sh
+fi
+
 ./quick-sharun --make-appimage
 
 echo "=== testing ==="

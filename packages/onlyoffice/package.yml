@@ -31,3 +31,8 @@ hooks: [fix-namespaces.hook]
 patch_run:
   - sed -i 's|^Exec=.*|Exec=DesktopEditors %F|' /usr/share/applications/onlyoffice-desktopeditors.desktop
   - grep -q "^Exec=DesktopEditors" /usr/share/applications/onlyoffice-desktopeditors.desktop && echo onlyoffice-exec-patched
+# quick-sharun aplana los helpers a bin/ (bin/x2t) pero DesktopEditors
+# los busca relativos al exe (bin/converter/x2t): recrear el arbol.
+link_run:
+  - mkdir -p "$APPDIR/bin/converter"
+  - ln -sfn ../x2t "$APPDIR/bin/converter/x2t"

@@ -12,7 +12,7 @@ icon: DUMMY
 desktop: DUMMY
 main_bin: elyprismlauncher
 build_out: build/elyprismlauncher
-build_deps: [cmake, ninja, extra-cmake-modules, qt6-base, qt6-svg, qt6-imageformats, qt6-networkauth, quazip-qt6, tomlplusplus, zlib, cmark, scdoc, vulkan-headers, gamemode, lib32-gamemode]
+build_deps: [cmake, ninja, extra-cmake-modules, qt6-base, qt6-svg, qt6-imageformats, qt6-networkauth, quazip-qt6, tomlplusplus, zlib, cmark, scdoc, vulkan-headers, gamemode, lib32-gamemode, qrencode]
 debloat: mesa
 build_run:
   - git submodule update --init --depth 1 --jobs $(nproc)
