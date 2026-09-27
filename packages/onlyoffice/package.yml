@@ -17,5 +17,9 @@ desktop: /usr/share/applications/onlyoffice-desktopeditors.desktop
 extra_paths: [/opt/onlyoffice/desktopeditors]
 data_from: /opt/onlyoffice/desktopeditors
 runtime_from: /opt/onlyoffice/desktopeditors
+# Delta sobre las deps del AUR (ver Depends del .deb 9.4.0): atk,
+# gst-libav, libxkbcommon-x11 y xdg-utils no los trae makepkg y
+# quick-sharun aborta sin ellos (primero: libxkbcommon-x11.so.0).
+build_deps: [atk, gst-libav, libxkbcommon-x11, xdg-utils]
 debloat: mesa
 hooks: [fix-namespaces.hook]

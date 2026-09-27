@@ -82,6 +82,12 @@ aur)
 	mkdir -p /tmp/aur-build
 	chown builder:builder /tmp/aur-build
 	su builder -c "git clone https://aur.archlinux.org/$SOURCE_PKG.git /tmp/aur-build/$SOURCE_PKG"
+	# Fresh containers have empty keyrings: import the upstream PGP keys
+	# the PKGBUILD declares (e.g. spotify's repo Release key) before
+	# makepkg verifies signatures. No validpgpkeys -> no-op.
+	keys=$(sed -n 's/^validpgpkeys=//p' /tmp/aur-build/$SOURCE_PKG/PKGBUILD | grep -oE '[0-9A-Fa-f]{16,40}' | tr '\n' ' ')
+	# shellcheck disable=SC2086
+	[ -n "$keys" ] && su builder -c "gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys $keys"
 	su builder -c "cd /tmp/aur-build/$SOURCE_PKG && makepkg -si --noconfirm"
 	;;
 url)
