@@ -23,3 +23,11 @@ runtime_from: /opt/onlyoffice/desktopeditors
 build_deps: [atk, gst-libav, libxkbcommon-x11, xdg-utils]
 debloat: mesa
 hooks: [fix-namespaces.hook]
+# El .desktop trae Exec=/usr/bin/onlyoffice-desktopeditors (el script
+# wrapper). Apuntar al binario REAL: con el Exec viejo, el flujo de
+# refresh-desktop de sharun no valida el destino y cae al dialogo
+# interactivo, que muere con "Cannot find suitable binary to perform
+# operation!" (no hay terminal en el contenedor) y tumba el --test.
+patch_run:
+  - sed -i 's|^Exec=.*|Exec=DesktopEditors %F|' /usr/share/applications/onlyoffice-desktopeditors.desktop
+  - grep -q "^Exec=DesktopEditors" /usr/share/applications/onlyoffice-desktopeditors.desktop && echo onlyoffice-exec-patched

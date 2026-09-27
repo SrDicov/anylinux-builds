@@ -15,6 +15,9 @@ desktop: DUMMY
 main_bin: reaper
 extra_paths: [/opt/REAPER]
 data_from: /opt/REAPER
+# REAPER es un ELF dynamic enlazado a ALSA + X11 + GTK: sin estas el
+# quick-sharun aborta con "libasound.so.2 => not found".
+build_deps: [alsa-lib, gtk3, libx11, libxext, libxss, dbus]
 debloat: common
 patch_run:
   - cp -r /tmp/payload-ex/reaper_linux_x86_64/REAPER /opt/REAPER
