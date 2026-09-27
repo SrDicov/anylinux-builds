@@ -23,5 +23,4 @@ hooks: [fix-namespaces.hook]
 # superuser!") y CI corre como root: mismo bypass que steam.
 patch_run:
   - python3 -c 'p="/usr/bin/portproton"; s=open(p).read(); old="\"$(id -u)\" == \"0\""; assert s.count(old)==1; open(p,"w").write(s.replace(old,"\"$(id -u)\" == \"69\""))'
-  - rm -f /usr/share/X11/xorg.conf.d/10-nvidia*.conf
-  - (timeout 8 Xvfb :98 -screen 0 1024x768x24 >/tmp/xvfb-err.log 2>&1; echo "XVFB98-EXIT=$?"); head -12 /tmp/xvfb-err.log
+  - rm -f /usr/share/X11/xorg.conf.d/10-nvidia*.conf /usr/share/egl/egl_external_platform.d/*nvidia*.json /usr/share/glvnd/egl_vendor.d/*nvidia*.json
