@@ -15,7 +15,7 @@ eval "$(python3 "$BUILDER_DIR/parse-recipe.py" "$RECIPE_DIR")"
 	"${SOURCE_REF:=}" "${SOURCE_URL_VERSION:=}" "${RECIPE_MAIN_BIN:=}" \
 	"${RECIPE_BUILD_DEPS:=}" "${RECIPE_DEBLOAT:=common}" "${RECIPE_HOOKS:=}" \
 	"${RECIPE_TEST_ARGS:=}" "${RECIPE_BUILD_OUT:=}" "${RECIPE_DATA_FROM:=}" \
-	"${RECIPE_EXTRA_PATHS:=}" "${RECIPE_HOST_DRIVERS:=0}"
+	"${RECIPE_EXTRA_PATHS:=}" "${RECIPE_HOST_DRIVERS:=0}" "${RECIPE_DEPLOY:=}"
 
 ARCH="$(uname -m)"
 export ICON="$RECIPE_ICON"
@@ -27,6 +27,20 @@ export OUTNAME="$RECIPE_NAME-$ARCH.AppImage"
 [ "$RECIPE_HOST_DRIVERS" = 1 ] && export USE_HOST_DRIVERS_EXPERIMENTAL=1
 
 echo "=== installing base build deps ==="
+# Forced deploys (deploy: [gtk, ...]) install their libs at build time so
+# quick-sharun has them in /usr to trace and deploy; the DEPLOY_* vars make
+# it ship them even when the strace never saw the dlopen.
+# shellcheck disable=SC2086
+DEPLOY_PKGS=""
+for d in $RECIPE_DEPLOY; do
+	case "$d" in
+	gtk) DEPLOY_PKGS="$DEPLOY_PKGS gtk3 libxss"; export DEPLOY_GTK=1 ;;
+	notify) DEPLOY_PKGS="$DEPLOY_PKGS libnotify" ;;
+	xss) DEPLOY_PKGS="$DEPLOY_PKGS libxss" ;;
+	qt) DEPLOY_PKGS="$DEPLOY_PKGS qt6-base" ;;
+	*) echo "ERROR: unknown deploy entry '$d' (gtk|notify|xss|qt)" >&2; exit 1 ;;
+	esac
+done
 # Steam-style 32-bit stacks need multilib. Container pacman.conf layouts
 # vary (commented section vs active section without mirrors), so normalize
 # instead of assuming one format. Fresh container per run: no dup risk.
@@ -47,7 +61,7 @@ if pacman -Qu archlinux-keyring 2>/dev/null | grep -q archlinux-keyring; then
 fi
 pacman -Syu --noconfirm \
 	base-devel git patchelf wget xorg-server-xvfb python3 \
-	$RECIPE_BUILD_DEPS
+	$RECIPE_BUILD_DEPS $DEPLOY_PKGS
 
 case "$RECIPE_DEBLOAT" in
 common)

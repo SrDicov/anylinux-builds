@@ -9,7 +9,17 @@ block `- item` lists, true/false booleans. Exits non-zero on error.
 import sys
 
 
-LIST_KEYS = ("build_deps", "hooks", "test_args", "build_run", "extra_paths", "app_env", "patch_run", "link_run")
+LIST_KEYS = (
+    "build_deps",
+    "hooks",
+    "test_args",
+    "build_run",
+    "extra_paths",
+    "app_env",
+    "patch_run",
+    "link_run",
+    "deploy",
+)
 
 
 def parse(text):
@@ -45,6 +55,7 @@ def parse(text):
             "build_run",
             "patch_run",
             "link_run",
+            "deploy",
         ):
             continue  # collected by the block-list rescan below
         elif current is not None:
@@ -116,6 +127,12 @@ def load_recipe(path):
     data.setdefault("patch_run", [])
     data.setdefault("link_run", [])
     data.setdefault("runtime_from", "")
+    data.setdefault("deploy", [])
+    if str(data.get("host_drivers", "false")).lower() in ("1", "true", "yes"):
+        data["host_drivers"] = True
+    for d in data["deploy"]:
+        if d not in ("gtk", "notify", "xss", "qt"):
+            raise ValueError(f"{path}: unknown deploy entry '{d}' (gtk|notify|xss|qt)")
     data.setdefault("debloat", "common")
     data.setdefault("host_drivers", "false")
     for key in ("name", "bin", "icon", "desktop"):

@@ -20,3 +20,4 @@ debloat: mesa
 hooks: [fix-namespaces.hook]
 app_env: [ELECTRON_DISABLE_SANDBOX=1]
 test_args: [--no-sandbox, --version]
+deploy: [gtk]

@@ -21,3 +21,4 @@ app_env: [ELECTRON_DISABLE_SANDBOX=1]
 # el backend lo spawnea como ./nile con cwd=x64/linux -> ENOENT (Amazon roto).
 link_run:
   - ln -sfn ../../../../../../nile "$APPDIR/bin/resources/app.asar.unpacked/build/bin/x64/linux/nile"
+deploy: [gtk]

@@ -30,6 +30,19 @@ Cloud builder for sharun-based AppImages. One generic pipeline, N declarative re
   copy); always validate the AppImage on a clean machine.
 - Chromium apps: zygote sandbox dies inside the image (FATAL goodbye);
   bake `app_env: [ELECTRON_DISABLE_SANDBOX=1]` (verified working).
+- Chromium/Electron GTK tray is loaded conditionally, so the strace in CI
+  never sees the dlopen and quick-sharun ships no `gtk3`: on a musl host the
+  UI then resolves to the host's Qt6 and aborts ("Could not load the Qt
+  platform plugin"). `deploy: [gtk]` in the recipe installs `gtk3 libxss`
+  and sets `DEPLOY_GTK=1` so the stack always ships. Use it for every
+  Chromium/Electron recipe; `DEPLOY_GTK` is one of the few upstream knobs
+  that is not auto-detected.
+- Upstream `chrome-wrapper` launcher scripts (brave) use
+  `exec > >(exec cat)` (needs `/dev/fd`, absent on musl), `|| true` after
+  the final exec (hides the real exit code) and write a host-global
+  `mimeapps.list`. Strip all three via `patch_run` when bundling one, and
+  add `/usr/bin/bash` to `extra_paths` so the shebang never lands on the
+  host's musl bash.
 - `extra_paths` deploys ELFs + closures only, NEVER plain data: if the app
   needs files next to the binary (bootstrap tarballs, helper scripts),
   pair it with `data_from` pointing at the same dir (verified: missing

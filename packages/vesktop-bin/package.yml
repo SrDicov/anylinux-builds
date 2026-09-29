@@ -27,3 +27,4 @@ runtime_from: /opt/vesktop
 # Chromium sandbox breaks inside the AppImage (dead zygote -> FATAL);
 # disable it by default (verified: Discord loads, window opens).
 app_env: [ELECTRON_DISABLE_SANDBOX=1]
+deploy: [gtk]

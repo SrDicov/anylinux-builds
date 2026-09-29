@@ -5,8 +5,17 @@
 # exit codes), NO el ELF (ese es .../brave, tambien desplegado). Se mantiene
 # el wrapper como entry porque el .desktop pide Exec=brave-origin y el
 # wrapper resuelve relativo sin fuga absoluta. No cambiar a ciegas.
-# Musl+Wayland(QPA forzado): reporte externo lo da FALLIDO (Qt host);
-# brave (misma version upstream) ahi SI funciona. Sin reproduccion local.
+# Musl+Wayland(QPA forzado): el reporte externo lo da FALLIDO con "Could
+# not load the Qt platform plugin wayland" del host musl. Causa raiz: la
+# imagen no llevaba gtk3 (ver deploy: [gtk] al final). El wrapper upstream
+# usa `exec > >(exec cat)` (process substitution via /dev/fd, que musl no
+# tiene), pega `|| true` al exec (enmascara el exit code real) y crea un
+# mimeapps.list global del host. Los tres se neutralizan aqui.
+patch_run:
+  - python3 -c 'p="/opt/brave-origin-bin/brave-origin"; s=open(p).read(); a="xdg_app_dir=\"${XDG_DATA_HOME:-$HOME/.local/share/applications}\"\nmkdir -p \"$xdg_app_dir\"\n[ -f \"$xdg_app_dir/mimeapps.list\" ] || touch \"$xdg_app_dir/mimeapps.list\"\n"; assert s.count(a)==1, "mimeapps block not found"; s=s.replace(a,""); b="exec > >(exec cat)\nexec 2> >(exec cat >&2)\n"; assert s.count(b)==1, "fd block not found"; s=s.replace(b,""); c="\"$HERE/brave\" \"$@\" || true"; assert s.count(c)==1, "exec line not found"; s=s.replace(c,"exec \"$HERE/brave\" \"$@\""); open(p,"w").write(s)'
+# bash del wrapper: sin esto cae al bash del host (musl) -> shebang no
+# satisfy. mismo motivo que bin_steam.sh en steam.
+extra_paths: [/opt/brave-origin-bin, /usr/bin/bash]
 # Chromium: runtime GL/ffmpeg desde el exe dir + sandbox desactivado.
 name: brave-origin
 source:
@@ -16,10 +25,13 @@ bin: /opt/brave-origin-bin/brave-origin
 main_bin: brave-origin
 icon: /usr/share/icons/hicolor/256x256/apps/brave-origin.png
 desktop: /usr/share/applications/brave-origin.desktop
-extra_paths: [/opt/brave-origin-bin]
 data_from: /opt/brave-origin-bin
 runtime_from: /opt/brave-origin-bin
 debloat: mesa
 hooks: [fix-namespaces.hook]
 app_env: [ELECTRON_DISABLE_SANDBOX=1]
 test_args: [--no-sandbox, --version]
+# Brave dlopenea GTK solo si hay bandeja; el strace de CI no lo ve nunca, y
+# en host musl la UI cae al Qt6 del host (musl) -> abort. gtk3/libxss son
+# deps declaradas del PKGBUILD: se instalan y se despliegan a proposito.
+deploy: [gtk]
