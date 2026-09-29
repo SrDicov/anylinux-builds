@@ -53,9 +53,7 @@ def main():
         # happens to catch the dlopen. Chromium loads GTK (tray/notifications)
         # conditionally, so on CI it is never traced and the app then resolves
         # its UI stack from the HOST (musl Qt/GTK -> abort on glibc images).
-        "RECIPE_DEPLOY": " ".join(
-            f"DEPLOY_{k.upper()}=1" for k in (data.get("deploy", []) or [])
-        ),
+        "RECIPE_DEPLOY": " ".join(data.get("deploy", []) or []),
     }
     for key, value in out.items():
         print(f"{key}={sh(value)}")
