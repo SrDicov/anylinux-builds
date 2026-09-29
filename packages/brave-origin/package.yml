@@ -1,8 +1,12 @@
 # brave-origin: variante Origin-trial de Brave (mismo upstream
 # brave-browser, releases brave-origin-*). AUR *-bin: precompilado.
-# OJO: /usr/bin/brave-origin es un script con
-# `exec /opt/brave-origin-bin/brave-origin` absoluto; se empaqueta
-# el binario REAL (fuga por ruta absoluta).
+# OJO: /opt/brave-origin-bin/brave-origin es el WRAPPER chrome-wrapper
+# (bash: mimeapps + exec relativo $HERE/brave con `|| true` que enmascara
+# exit codes), NO el ELF (ese es .../brave, tambien desplegado). Se mantiene
+# el wrapper como entry porque el .desktop pide Exec=brave-origin y el
+# wrapper resuelve relativo sin fuga absoluta. No cambiar a ciegas.
+# Musl+Wayland(QPA forzado): reporte externo lo da FALLIDO (Qt host);
+# brave (misma version upstream) ahi SI funciona. Sin reproduccion local.
 # Chromium: runtime GL/ffmpeg desde el exe dir + sandbox desactivado.
 name: brave-origin
 source:
