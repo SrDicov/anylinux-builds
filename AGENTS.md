@@ -8,7 +8,7 @@ Cloud builder for sharun-based AppImages. One generic pipeline, N declarative re
 - `builder/build.sh` — canonical flow (pacman + debloat + install to `/usr` + quick-sharun + `--make-appimage` + `--test`). Don't invent another flow.
 - `builder/pinned.sh` — single bump point for quick-sharun/debloat URLs + container.
 - `builder/check-update.sh` + `builder/discover.py` — version fingerprint vs `versions.json` state. Workflow updates state; hand-edit only to force rebuilds.
-- `.github/workflows/build.yml` — cron 24h + manual dispatch + push; rolling `continuous` release. Push touching `packages/<app>` forces rebuild (`--force-include`) even if version unchanged. CHANGED comes from `HEAD~1..HEAD` with an event-range fallback (a silent empty diff once skipped a rebuild — never trust it blind).
+- `.github/workflows/build.yml` — cron 24h + manual dispatch + push; rolling `continuous` release. Push touching `packages/<app>` forces rebuild (`--force-include`) even if version unchanged. CHANGED comes from the push-payload file list (checkout git diffs proved unreliable: empty twice); git ranges are fallback only.
 - `builder/recipe.py` — stdlib-only parser + schema check. Restricted YAML only: scalars, one-level `source:`, inline `[a, b]` or block `- item` lists. No anchors/multiline/nesting.
 
 ## Binding packaging rules (from upstream quick-sharun)
