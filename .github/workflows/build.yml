@@ -58,25 +58,7 @@ jobs:
             # Push payload is authoritative: this checkout's git state gave
             # empty diffs twice (HEAD~1 and event-range), silently skipping
             # rebuilds. Git ranges stay only as fallback.
-            CHANGED=$(python3 -c "
-import json, os
-raw = os.environ.get('PUSH_COMMITS') or '[]'
-try:
-    commits = json.loads(raw)
-except Exception:
-    commits = []
-if not isinstance(commits, list):
-    commits = []
-paths = set()
-for c in commits:
-    if not isinstance(c, dict):
-        continue
-    for f in c.get('added', []) + c.get('modified', []) + c.get('removed', []):
-        p = f.split('/')
-        if len(p) > 2 and p[0] == 'packages':
-            paths.add(p[1])
-print(' '.join(sorted(paths)))
-")
+            CHANGED=$(python3 -c "import json,os; print(' '.join(sorted({p[1] for c in (json.loads(os.environ.get('PUSH_COMMITS') or '[]') or []) if isinstance(c, dict) for f in c.get('added', []) + c.get('modified', []) + c.get('removed', []) for p in [f.split('/')] if len(p) > 2 and p[0] == 'packages'})))")
             if [ -z "$CHANGED" ]; then
               CHANGED=$(git diff --name-only HEAD~1 HEAD -- packages 2>/dev/null | cut -d/ -f2 | sort -u | tr '\n' ' ' || true)
               echo "WARN: push-payload empty, git fallback gave: '$CHANGED'"
