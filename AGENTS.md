@@ -40,9 +40,9 @@ Cloud builder for sharun-based AppImages. One generic pipeline, N declarative re
 - Upstream `chrome-wrapper` launcher scripts (brave) use
   `exec > >(exec cat)` (needs `/dev/fd`, absent on musl), `|| true` after
   the final exec (hides the real exit code) and write a host-global
-  `mimeapps.list`. Strip all three via `patch_run` when bundling one, and
-  add `/usr/bin/bash` to `extra_paths` so the shebang never lands on the
-  host's musl bash.
+  `mimeapps.list`. All three are musl-hostile, but do NOT patch them
+  blind: a strip attempt caused an intermittent SIGILL on a glibc host
+  (brave-origin). Needs a musl host to validate.
 - `extra_paths` deploys ELFs + closures only, NEVER plain data: if the app
   needs files next to the binary (bootstrap tarballs, helper scripts),
   pair it with `data_from` pointing at the same dir (verified: missing
