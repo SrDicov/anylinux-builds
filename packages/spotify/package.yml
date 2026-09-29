@@ -29,3 +29,4 @@ link_run:
   - ln -sfn ../../bin/resources.pak "$APPDIR/lib/spotify/resources.pak"
   - ln -sfn ../../bin/chrome_100_percent.pak "$APPDIR/lib/spotify/chrome_100_percent.pak"
   - ln -sfn ../../bin/chrome_200_percent.pak "$APPDIR/lib/spotify/chrome_200_percent.pak"
+  - ln -sfn ../../bin/locales "$APPDIR/lib/spotify/locales"
