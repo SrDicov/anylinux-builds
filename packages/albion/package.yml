@@ -15,10 +15,18 @@ source:
   url: https://live.albiononline.com/clients/latest/albion-online-setup
   url_bin: data/launcher/Albion-Online
 bin: /usr/bin/albion-online
-main_bin: Albion-Online
+# El entry lleva el mismo nombre que el instalador: la rama archive de
+# deja el ELF ahi y patch_run lo reemplaza por el entry (el ELF real queda
+# en /opt/albion/launcher y se despliega via extra_paths). Asi AppRun y el
+# --test lanzan el entry (siembra HOME), nunca el ELF pelado (moriria
+# descargando game_x64 en la imagen read-only).
+main_bin: albion-online
 icon: /usr/share/pixmaps/albion-online.xpm
 desktop: /usr/share/applications/albion-online.desktop
 extra_paths: [/opt/albion/launcher]
+# libSDL2 empaquetada pide libasound.so.2 y el contenedor no trae alsa-lib:
+# sin esto el --test muere con "cannot open shared object file" (reaper).
+build_deps: [alsa-lib]
 patch_run:
   - mkdir -p /opt/albion && cp -r /tmp/payload-ex/data/. /opt/albion/ && ls /opt/albion/launcher/Albion-Online /opt/albion/Albion-Online
   - install -Dm755 packages/albion/albion-entry.sh /usr/bin/albion-online
