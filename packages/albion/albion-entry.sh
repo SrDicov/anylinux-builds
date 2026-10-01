@@ -28,10 +28,19 @@ if [ -f "$lock" ]; then
     owner="$(head -n 1 "$lock" 2>/dev/null)"
     case "$owner" in
         ''|*[!0-9]*) ;;
-        *) if ! kill -0 "$owner" 2>/dev/null; then
-               echo "albion-online: reaping stale launcher.lock (pid $owner dead)" >&2
-               rm -f "$lock"
-           fi ;;
+        *)
+            # kill -0 alone trusts recycled pids (busy CI containers reuse
+            # them in minutes): only a live Albion-Online keeps the lock.
+            # Anything else (dead pid, foreign cmdline, unreadable proc)
+            # that is NOT verifiably our launcher is stale.
+            ownercmd="$(tr '\0' ' ' < /proc/"$owner"/cmdline 2>/dev/null)"
+            case "$ownercmd" in
+                *Albion-Online*)
+                    echo "albion-online: another launcher holds the lock (pid $owner)" >&2 ;;
+                *)
+                    echo "albion-online: reaping stale launcher.lock (pid $owner: ${ownercmd:-dead})" >&2
+                    rm -f "$lock" ;;
+            esac ;;
     esac
 fi
 export QT_QPA_PLATFORM_PLUGIN_PATH="$dest/launcher/plugins/platforms"
