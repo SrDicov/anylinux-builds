@@ -23,7 +23,7 @@ bin: /usr/bin/albion-online
 main_bin: albion-online
 icon: /usr/share/pixmaps/albion-online.xpm
 desktop: /usr/share/applications/albion-online.desktop
-extra_paths: [/opt/albion/launcher]
+extra_paths: [/opt/albion/launcher, /usr/bin/patchelf]
 # libSDL2 empaquetada pide libasound.so.2 y el contenedor no trae alsa-lib:
 # sin esto el --test muere con "cannot open shared object file" (reaper).
 build_deps: [alsa-lib]

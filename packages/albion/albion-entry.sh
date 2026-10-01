@@ -13,9 +13,26 @@ img="$base/share/albion"
 [ -d "$img/launcher" ] || img="/opt/albion"
 dest="${XDG_DATA_HOME:-$HOME/.local/share}/albiononline"
 if [ ! -x "$dest/launcher/Albion-Online" ] || [ "$img/launcher/version.txt" -nt "$dest/launcher/version.txt" ]; then
+    echo "albion-online: seeding $dest from image (first run or launcher update)" >&2
     rm -rf "$dest"
     mkdir -p "$dest"
     cp -r "$img/." "$dest/"
+fi
+# The launcher singleton-guards via launcher.lock holding its pid. A killed
+# container/CI phase (trace then test share one HOME) leaves a STALE pid
+# behind and every later start exits 0 "already running". Reap only when
+# the owner is verifiably dead; a live owner keeps its protection.
+lockdir="${XDG_DATA_HOME:-$HOME/.local/share}/Sandbox Interactive GmbH/Albion Online Launcher"
+lock="$lockdir/launcher.lock"
+if [ -f "$lock" ]; then
+    owner="$(head -n 1 "$lock" 2>/dev/null)"
+    case "$owner" in
+        ''|*[!0-9]*) ;;
+        *) if ! kill -0 "$owner" 2>/dev/null; then
+               echo "albion-online: reaping stale launcher.lock (pid $owner dead)" >&2
+               rm -f "$lock"
+           fi ;;
+    esac
 fi
 export QT_QPA_PLATFORM_PLUGIN_PATH="$dest/launcher/plugins/platforms"
 export QT_PLUGIN_PATH="$dest/launcher/plugins/"
@@ -25,6 +42,23 @@ export QT_PLUGIN_PATH="$dest/launcher/plugins/"
 export QTWEBENGINEPROCESS_PATH="$dest/launcher/QtWebEngineProcess"
 export QTWEBENGINE_RESOURCES_PATH="$dest/launcher/resources"
 export QTWEBENGINE_LOCALES_PATH="$dest/launcher/translations/qtwebengine_locales"
+# AT_EXECFN follows the execve path, not argv[0]: with exec "$loader" "$elf"
+# Qt believes the exe lives next to the LOADER (env vars above paper over
+# WebEngine, but translations and any self-respawn still resolve wrong).
+# Point the copy's INTERP at the bundled loader once, then exec directly:
+# kernel loads via image ld, AT_EXECFN is the real ELF everywhere (glibc
+# and musl alike). patchelf ships in the image (extra_paths).
+LD_CAND=""
+for l in "$base/lib/ld-linux-x86-64.so.2" "$here/../lib/ld-linux-x86-64.so.2"; do
+    if [ -x "$l" ]; then LD_CAND="$l"; break; fi
+done
+if [ -n "$LD_CAND" ]; then
+    for b in "$dest/launcher/Albion-Online" "$dest/launcher/QtWebEngineProcess" "$dest/launcher/xdelta3"; do
+        if [ -f "$b" ]; then
+            "$here/patchelf" --set-interpreter "$LD_CAND" "$b" 2>/dev/null || true
+        fi
+    done
+fi
 OSNAME=$(grep '^NAME=' /etc/os-release 2>/dev/null | cut -d= -f2 | tr -d '"')
 if [ "$OSNAME" != "SteamOS" ]; then
     export LIBGL_ALWAYS_SOFTWARE=1
@@ -40,9 +74,7 @@ done
 if [ "$HASSTEAMFLAG" = "0" ] && [ -n "$SteamGameId" ] && [ "$SteamGameId" != "0" ]; then
     set -- "$@" "-steam"
 fi
-# The HOME copy runs outside the image: exec it through the bundled loader
-# so musl hosts (no /lib64/ld-linux) work. Falls back to a direct exec.
-for l in "$base/lib/ld-linux-x86-64.so.2" "$here/../lib/ld-linux-x86-64.so.2"; do
-    if [ -x "$l" ]; then exec "$l" "$dest/launcher/Albion-Online" --no-sandbox "$@"; fi
-done
+# INTERP of the copy now points at the bundled loader (or the host one on
+# glibc when the image loader is absent): direct exec works everywhere and
+# AT_EXECFN is the real ELF.
 exec "$dest/launcher/Albion-Online" --no-sandbox "$@"
