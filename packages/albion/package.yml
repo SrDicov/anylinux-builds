@@ -1,0 +1,28 @@
+# albion: MMORPG Albion Online (Sandbox Interactive). Fuente: instalador
+# OFICIAL de linux (MojoSetup EXE = stub ELF + zip anexado, URL sin
+# extension). albiononline.com/download es Cloudflare-403 para bots; la URL
+# estable es .../clients/latest/albion-online-setup (verificado: mismos
+# bytes/ETag que el path fechado). Sin url_version: check-update huella
+# ETag/Last-Modified por HEAD automaticamente.
+# OJO: el launcher descarga game_x64/ JUNTO a si mismo (hermano de
+# launcher/, la config si va a XDG_DATA_HOME); la imagen es read-only, asi
+# que bin: es un entry propio que siembra ~/.local/share/albiononline al
+# primer arranque y ejecuta ahi via el loader empaquetado (idea del router
+# de steam). El entry replica exports + logica -steam del wrapper upstream.
+name: albion
+source:
+  type: url
+  url: https://live.albiononline.com/clients/latest/albion-online-setup
+  url_bin: data/launcher/Albion-Online
+bin: /usr/bin/albion-online
+main_bin: Albion-Online
+icon: /usr/share/pixmaps/albion-online.xpm
+desktop: /usr/share/applications/albion-online.desktop
+extra_paths: [/opt/albion/launcher]
+patch_run:
+  - mkdir -p /opt/albion && cp -r /tmp/payload-ex/data/. /opt/albion/ && ls /opt/albion/launcher/Albion-Online /opt/albion/Albion-Online
+  - install -Dm755 packages/albion/albion-entry.sh /usr/bin/albion-online
+  - install -Dm644 /opt/albion/AlbionOnline.xpm /usr/share/pixmaps/albion-online.xpm
+  - install -Dm644 packages/albion/albion-online.desktop /usr/share/applications/albion-online.desktop
+link_run:
+  - mkdir -p "$APPDIR/share/albion" && cp -r /opt/albion/. "$APPDIR/share/albion/" && test -x "$APPDIR/share/albion/launcher/Albion-Online"

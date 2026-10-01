@@ -116,7 +116,14 @@ aur)
 	su builder -c "cd /tmp/aur-build/$SOURCE_PKG && makepkg -si --noconfirm"
 	;;
 url)
-	case "$SOURCE_URL" in
+	# url_bin on an extensionless URL opts into archive handling (MojoSetup
+	# EXE installers: ELF stub with an appended zip, bsdtar seeks past the
+	# stub). Matching only; the download below still uses $SOURCE_URL.
+	_MATCH_URL="$SOURCE_URL"
+	case "$_MATCH_URL" in
+	*.tar.gz | *.tgz | *.tar.xz | *.tar.zst | *.zip | *.deb) ;;
+	*) [ -n "$RECIPE_URL_BIN" ] && _MATCH_URL="${_MATCH_URL}.zip" ;; esac
+	case "$_MATCH_URL" in
 	*.tar.gz | *.tgz | *.tar.xz | *.tar.zst | *.zip)
 		# Archive holding the binary: extract, install inner path.
 		[ -n "$RECIPE_URL_BIN" ] || {

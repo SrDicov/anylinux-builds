@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Albion Online
+GenericName=MMORPG
+Comment=Play Albion Online!
+Exec=albion-online
+Icon=albion-online
+Terminal=false
+Type=Application
+Categories=Game;
+StartupWMClass=Albion-Online
