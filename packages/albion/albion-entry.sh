@@ -19,6 +19,12 @@ if [ ! -x "$dest/launcher/Albion-Online" ] || [ "$img/launcher/version.txt" -nt 
 fi
 export QT_QPA_PLATFORM_PLUGIN_PATH="$dest/launcher/plugins/platforms"
 export QT_PLUGIN_PATH="$dest/launcher/plugins/"
+# Via loader (exec "$loader" "$elf"): Qt resuelve applicationDirPath() por
+# AT_EXECFN = el loader, no el ELF, asi que QtWebEngineProcess no aparece
+# junto al "exe" y aborta. Ruta explicita (el propio FATAL la sugiere).
+export QTWEBENGINEPROCESS_PATH="$dest/launcher/QtWebEngineProcess"
+export QTWEBENGINE_RESOURCES_PATH="$dest/launcher/resources"
+export QTWEBENGINE_LOCALES_PATH="$dest/launcher/translations/qtwebengine_locales"
 OSNAME=$(grep '^NAME=' /etc/os-release 2>/dev/null | cut -d= -f2 | tr -d '"')
 if [ "$OSNAME" != "SteamOS" ]; then
     export LIBGL_ALWAYS_SOFTWARE=1
