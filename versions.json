@@ -1,14 +1,14 @@
 {
-  "brave": "1:1.96.59-1",
-  "brave-origin": "1:1.96.59-1",
+  "brave": "1:1.97.56-1",
+  "brave-origin": "1:1.97.56-1",
   "heroic": "2.22.3-2",
-  "pineconemc": "11.1.0-1",
+  "pineconemc": "11.1.1-1",
   "portproton": "1.7.5-1",
   "reaper": "etag:ee5990db46f12df2a852e5ecb2d288f9",
   "spotify": "1:1.2.96.518-2",
   "steam": "1.0.0.87",
-  "suyu": "40aeb31824f208c507bf6f303b9c2d6a4dedcced",
+  "suyu": "89c5e72412b28c788557991a86f471ea3332f62a",
   "vesktop-bin": "1.6.7-5",
-  "vivaldi": "8.2.4133.80-1",
-  "waterfox": "1:6.7.4-1"
+  "vivaldi": "8.2.4133.84-1",
+  "waterfox": "1:6.7.5-1"
 }
