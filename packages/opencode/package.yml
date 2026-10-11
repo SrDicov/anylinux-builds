@@ -1,0 +1,22 @@
+# opencode: agente de coding open source (CLI/TUI). Binario PRECOMPILADO
+# de npm, el mismo que instala `curl -fsSL https://opencode.ai/v2/install
+# | bash` (paquete @opencode/cli-linux-x64: tgz con package/bin/opencode,
+# ELF x86-64 que solo pide libc/pthread/dl/m).
+# PINNEADO (excepcion a la regla sin-versiones, como reaper): el tarball
+# de npm lleva la version en el nombre y no hay URL estable a latest.
+# Bump = cambiar `url` a la nueva version (ver `npm view
+# @opencode/cli-linux-x64 version`). ETag del fichero inmutable: no
+# reconstruye solo hasta que se edite la URL.
+name: opencode
+source:
+  type: url
+  url: https://registry.npmjs.org/@opencode/cli-linux-x64/-/cli-linux-x64-2.0.26.tgz
+  url_bin: package/bin/opencode
+bin: /usr/bin/opencode
+icon: DUMMY
+desktop: DUMMY
+main_bin: opencode
+# CLI de vida corta: `opencode --version` sale 0 (verificado: `opencode
+# v2.0.26`), evita el --test de 12s para GUIs.
+test_args: [--version]
+debloat: common
