@@ -1,6 +1,6 @@
 {
-  "brave": "1:1.97.59-1",
-  "brave-origin": "1:1.97.59-1",
+  "brave": "1:1.98.60-1",
+  "brave-origin": "1:1.98.60-1",
   "heroic": "2.22.4-1",
   "opencode": "etag:e3c8ec1431749fbe3186230d67641015",
   "pineconemc": "11.1.1-1",
@@ -10,6 +10,6 @@
   "steam": "1.0.0.87",
   "suyu": "347fcf91d95cd39cb5c3db50f1b6d827ad699311",
   "vesktop-bin": "1.6.8-1",
-  "vivaldi": "8.2.4133.89-1",
+  "vivaldi": "8.2.4133.91-1",
   "waterfox": "1:6.7.6-1"
 }
