@@ -1,26 +1,27 @@
-# suyu (fork dougchansan, rama mk8-recomp): emulador Switch. Se compila
-# desde fuente en el contenedor Arch; el tarball precompilado es Ubuntu
-# (pide libavcodec.so.60/boost1.83) y no enlaza en Arch.
-# ponytail: system ffmpeg (Arch 9 vs Ubuntu 6 del upstream); si falla el build, -DYUZU_USE_BUNDLED_FFMPEG=ON. GCC nuevo eleva -Wconversion a error en vk_stall_probe.h: sed con static_cast<double> (el -Werror=conversion del target pisa cualquier flag global). Arch no instala los targets CMake *Private de Qt (Qt6Gui_PRIVATE_INCLUDE_DIRS vacio): el -I al dir qpa/ se resuelve con find. GetExeDirectory solo se declara bajo _WIN32 y filesystem.cpp lo llama en Linux: se declara siempre y se implementa con /proc/self/exe (fallback a cwd).
+# suyu (suyu-emu/suyu-main): emulador Switch. Se compila desde fuente en el
+# contenedor Arch. Upstream fija -Werror=shadow y su common_types.h define
+# f32/u128, que choca con Qt 6.12: se degrada a warning. src/suyu_cmd pide
+# el target VMA sin namespace; el importado real es GPUOpen::. Arch no trae
+# vulkan-utility-libraries ni exporta Qt6::GuiPrivate: se fuerzan bundled y
+# se pasa la ruta del include privado.
 name: suyu
 source:
   type: git
-  repo: https://github.com/dougchansan/suyu-v0.0.4
-  ref: mk8-recomp
+  repo: https://github.com/suyu-emu/suyu-main
+  ref: v14.1.0
 bin: /usr/bin/suyu
 icon: DUMMY
 desktop: DUMMY
 main_bin: suyu
 build_out: build/bin/suyu
 extra_paths: [/usr/bin/suyu-cmd]
-build_deps: [cmake, ninja, nasm, pkgconf, autoconf, glslang, qt6-base, qt6-svg, qt6-charts, qt6-multimedia, qt6-wayland, boost, ffmpeg, sdl3, libusb, openssl, alsa-lib, libpulse, libx11, libxext, libxrandr, libxcursor, libxi, libxfixes, libxkbcommon, libxss, libxtst, wayland, wayland-protocols, libdecor, libdrm, mesa, vulkan-headers, vulkan-utility-libraries, vulkan-icd-loader, zstd, lz4, zlib]
+build_deps: [cmake, ninja, nasm, pkgconf, autoconf, glslang, qt6-base, qt6-svg, qt6-charts, qt6-multimedia, qt6-wayland, qt6-tools, boost, ffmpeg, sdl3, libusb, openssl, alsa-lib, libpulse, libx11, libxext, libxrandr, libxcursor, libxi, libxfixes, libxkbcommon, libxss, libxtst, wayland, wayland-protocols, libdecor, libdrm, mesa, vulkan-headers, vulkan-icd-loader, zstd, lz4, zlib]
 debloat: mesa
 build_run:
-  - git submodule update --init --depth 1 --jobs $(nproc)
-  - sed -i -E 's/\b(framew|frame|gpuidle|draw|schedw|build|acquire|present) \* ms/static_cast<double>(\1) * ms/g; s/\(frame > known \? frame - known : 0\) \* ms/(frame > known ? static_cast<double>(frame - known) : 0.0) * ms/' src/video_core/renderer_vulkan/vk_stall_probe.h
-  - sed -i '/^namespace Common::FS {$/a [[nodiscard]] std::filesystem::path GetExeDirectory();' src/common/fs/path_util.h
-  - sed -i '/^fs::path GetHomeDirectory() {$/i fs::path GetExeDirectory() {\n#ifdef __linux__\n    std::error_code ec;\n    const auto exe = fs::read_symlink("/proc/self/exe", ec);\n    if (!ec \&\& !exe.empty()) {\n        return exe.parent_path();\n    }\n#endif\n    return GetCurrentDir();\n}\n' src/common/fs/path_util.cpp
-  - QTGUI_PRIV=$(dirname $(dirname $(find /usr/include/qt6/QtGui -name qplatformnativeinterface.h -print -quit))) && cmake -B build -GNinja -DCMAKE_BUILD_TYPE=Release -DENABLE_QT=ON -DYUZU_USE_BUNDLED_QT=OFF -DYUZU_TESTS=OFF -DENABLE_WEB_SERVICE=OFF -Dfmt_FORCE_BUNDLED=ON -DCMAKE_CXX_FLAGS="-Wno-conversion -I$QTGUI_PRIV"
+  - git submodule update --init --depth 1 --jobs $(nproc) || git submodule update --init --jobs $(nproc)
+  - sed -i -E 's/-Werror=shadow>/-Wno-error=shadow>/' src/CMakeLists.txt
+  - sed -i -E 's/Vulkan::Headers VulkanMemoryAllocator\)/Vulkan::Headers GPUOpen::VulkanMemoryAllocator)/' src/suyu_cmd/CMakeLists.txt
+  - QTGUI_PRIV=$(dirname $(dirname $(find /usr/include/qt6/QtGui -name qplatformnativeinterface.h -print -quit))) && cmake -B build -GNinja -DCMAKE_BUILD_TYPE=Release -DENABLE_QT=ON -DYUZU_USE_BUNDLED_QT=OFF -DYUZU_TESTS=OFF -DENABLE_WEB_SERVICE=OFF -DENABLE_UPDATE_CHECKER=OFF -DUSE_DISCORD_PRESENCE=OFF -DENABLE_CUBEB=OFF -Dfmt_FORCE_BUNDLED=ON -DVulkanHeaders_FORCE_BUNDLED=ON -DVulkanUtilityLibraries_FORCE_BUNDLED=ON -DQt6Gui_PRIVATE_INCLUDE_DIRS="$QTGUI_PRIV" -DCMAKE_CXX_FLAGS="-I$QTGUI_PRIV"
   - cmake --build build --target suyu suyu-cmd
 patch_run:
   - install -Dm755 /tmp/src-build/build/bin/suyu-cmd /usr/bin/suyu-cmd
