@@ -96,7 +96,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Bootstrap python3 for recipe parsing
-        run: pacman -Sy --noconfirm python3
+        run: pacman -Sy --noconfirm --overwrite "/usr/lib/lib*.so.*" python3 curl
 
       - name: Build AppImage
         run: sh builder/build.sh ${{ matrix.pkg.dir }}
