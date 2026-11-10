@@ -1,4 +1,4 @@
-# reaper: DAW de Cockos 7.80 PINNEADO (excepcion a la regla sin-versiones:
+# reaper: DAW de Cockos 7.85 PINNEADO (excepcion a la regla sin-versiones:
 # el tarball oficial lleva la version en el nombre, no hay URL estable,
 # ni git publico ni AUR. Bump = cambiar `url` (el resto de rutas no
 # llevan version). ETag del fichero inmutable: no reconstruye solo.
@@ -7,7 +7,7 @@
 name: reaper
 source:
   type: url
-  url: https://www.reaper.fm/files/7.x/reaper780_linux_x86_64.tar.xz
+  url: https://www.reaper.fm/files/7.x/reaper785_linux_x86_64.tar.xz
   url_bin: reaper_linux_x86_64/REAPER/reaper
 bin: /usr/bin/reaper
 icon: DUMMY

@@ -10,7 +10,7 @@
 name: opencode
 source:
   type: url
-  url: https://registry.npmjs.org/@opencode/cli-linux-x64/-/cli-linux-x64-2.0.26.tgz
+  url: https://registry.npmjs.org/@opencode/cli-linux-x64/-/cli-linux-x64-2.2.7.tgz
   url_bin: package/bin/opencode
 bin: /usr/bin/opencode
 icon: DUMMY
