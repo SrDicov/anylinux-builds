@@ -4,7 +4,7 @@ Cloud builder for sharun-based AppImages. One generic pipeline, N declarative re
 
 ## What lives where
 
-- `packages/<app>/package.yml` — The only per-app file. Copy `packages/vesktop-bin`, edit values.
+- `packages/<app>/package.yml` — The only per-app file. Copy `packages/vesktop`, edit values.
 - `builder/recipe.py` — Stdlib-only parser and schema validator for `package.yml` (no PyYAML). Can validate a recipe file directly: `python3 builder/recipe.py packages/<app>/package.yml`.
 - `builder/parse-recipe.py` — Generates shell-safe KEY='val' assignments for `build.sh` or extracts lists (`--get <key>`).
 - `builder/build.sh` — Canonical build flow (Arch container only): pacman + debloat + install to `/usr` + quick-sharun + `--make-appimage` + `--test`.

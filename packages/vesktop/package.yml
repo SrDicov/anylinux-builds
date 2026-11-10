@@ -4,7 +4,7 @@
 # absoluto; hay que empaquetar el binario REAL o el AppImage solo
 # funciona en la maquina que lo compilo (fuga por ruta absoluta).
 # NOTA: verifica bin/icon/desktop en la primera compilacion (dispatch manual).
-name: vesktop-bin
+name: vesktop
 source:
   type: aur
   pkg: vesktop-bin
