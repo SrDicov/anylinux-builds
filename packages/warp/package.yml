@@ -15,8 +15,6 @@ build_deps: [tpm2-tss, nss, dbus, ca-certificates]
 debloat: common
 test_args: [--version]
 patch_run:
-  - mkdir -p /usr/bin && mv /bin/warp-svc /usr/bin/warp-svc 2>/dev/null || true
-  - mv /bin/warp-cli /usr/bin/warp-cli 2>/dev/null || true
   - rm -rf /usr/lib/warp /usr/bin/warp-taskbar /usr/bin/warp-diag /usr/bin/warp-dex
   - strip -s /usr/bin/warp-svc /usr/bin/warp-cli 2>/dev/null || true
   - cp packages/warp/warp-apprun /usr/bin/warp-apprun && chmod +x /usr/bin/warp-apprun

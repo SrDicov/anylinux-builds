@@ -154,14 +154,24 @@ url)
 		install -Dm755 "/tmp/payload-ex/$RECIPE_URL_BIN" "/usr/bin/$RECIPE_MAIN_BIN"
 		;;
 	*.deb)
-		# Debian package (e.g. Valve's steam.deb): unpack the inner
-		# data.tar payload to / for bundling.
+		# Debian package (e.g. Valve's steam.deb): unpack payload safely.
+		# Arch is merged-usr (/bin -> usr/bin, /lib -> usr/lib). Extract to
+		# a temp staging dir so ./bin and ./lib don't overwrite the root symlinks.
 		command -v bsdtar >/dev/null 2>&1 || pacman -S --noconfirm libarchive
-		rm -rf /tmp/payload-dl /tmp/deb-ex
-		mkdir -p /tmp/deb-ex
+		rm -rf /tmp/payload-dl /tmp/deb-ex /tmp/deb-staging
+		mkdir -p /tmp/deb-ex /tmp/deb-staging
 		wget --retry-connrefused --tries=30 "$SOURCE_URL" -O /tmp/payload-dl
 		bsdtar -xf /tmp/payload-dl -C /tmp/deb-ex 'data.tar*'
-		bsdtar -xf /tmp/deb-ex/data.tar.* -C /
+		bsdtar -xf /tmp/deb-ex/data.tar.* -C /tmp/deb-staging
+		if [ -d /tmp/deb-staging/bin ]; then
+			cp -a /tmp/deb-staging/bin/* /usr/bin/ 2>/dev/null || true
+			rm -rf /tmp/deb-staging/bin
+		fi
+		if [ -d /tmp/deb-staging/lib ]; then
+			cp -a /tmp/deb-staging/lib/* /usr/lib/ 2>/dev/null || true
+			rm -rf /tmp/deb-staging/lib
+		fi
+		cp -a /tmp/deb-staging/* / 2>/dev/null || true
 		;;
 	*)
 		# Single executable binary.
