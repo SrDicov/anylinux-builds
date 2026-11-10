@@ -116,6 +116,22 @@ aur)
 	su builder -c "cd /tmp/aur-build/$SOURCE_PKG && makepkg -si --noconfirm"
 	;;
 url)
+	case "$SOURCE_URL" in
+	auto|"")
+		case "$SOURCE_URL_VERSION" in
+		apt\ *)
+			spec="${SOURCE_URL_VERSION#apt }"
+			pkg="${spec##* }"
+			packages_url="${spec% *}"
+			base_url="${packages_url%%/dists/*}"
+			deb_rel="$(curl -fsSL --max-time 60 "$packages_url" | awk -v pkg="$pkg" '
+				$1 == "Package:" && $2 == pkg {found=1}
+				found && $1 == "Filename:" {print $2; exit}')"
+			SOURCE_URL="$base_url/$deb_rel"
+			;;
+		esac
+		;;
+	esac
 	# url_bin on an extensionless URL opts into archive handling (MojoSetup
 	# EXE installers: ELF stub with an appended zip, bsdtar seeks past the
 	# stub). Matching only; the download below still uses $SOURCE_URL.

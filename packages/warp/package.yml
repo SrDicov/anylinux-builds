@@ -1,0 +1,22 @@
+# Cloudflare WARP client (warp-svc + warp-cli).
+# Unpacks official Debian package from Cloudflare's apt repository.
+# Drop-in compatible with rotator.py via symlink: warp-cli -> WARP.AppImage
+name: warp
+source:
+  type: url
+  url: auto
+  url_version: apt https://pkg.cloudflareclient.com/dists/bookworm/main/binary-amd64/Packages cloudflare-warp
+bin: /usr/bin/warp-apprun
+icon: DUMMY
+desktop: DUMMY
+main_bin: warp-apprun
+extra_paths: [/usr/bin/warp-svc, /usr/bin/warp-cli]
+build_deps: [tpm2-tss, nss, dbus, ca-certificates]
+debloat: common
+test_args: [--version]
+patch_run:
+  - mkdir -p /usr/bin && mv /bin/warp-svc /usr/bin/warp-svc 2>/dev/null || true
+  - mv /bin/warp-cli /usr/bin/warp-cli 2>/dev/null || true
+  - rm -rf /usr/lib/warp /usr/bin/warp-taskbar /usr/bin/warp-diag /usr/bin/warp-dex
+  - strip -s /usr/bin/warp-svc /usr/bin/warp-cli 2>/dev/null || true
+  - cp packages/warp/warp-apprun /usr/bin/warp-apprun && chmod +x /usr/bin/warp-apprun
