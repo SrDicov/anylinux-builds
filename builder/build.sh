@@ -51,6 +51,9 @@ else
 	grep -q '^\[multilib\]' /etc/pacman.conf ||
 		printf '\n[multilib]\nInclude = /etc/pacman.d/mirrorlist\n' >>/etc/pacman.conf
 fi
+# Ensure fallback mirrors exist in case primary mirror drops connections under parallel load
+grep -q "geo.mirror.pkgbuild.com" /etc/pacman.d/mirrorlist 2>/dev/null || \
+	printf '\nServer = https://geo.mirror.pkgbuild.com/$repo/os/$arch\nServer = https://mirror.rackspace.com/archlinux/$repo/os/$arch\n' >>/etc/pacman.d/mirrorlist
 pacman -Sy
 if pacman -Qu archlinux-keyring 2>/dev/null | grep -q archlinux-keyring; then
 	# The keyring upgrade locally signs keys; fresh containers have no
@@ -59,7 +62,10 @@ if pacman -Qu archlinux-keyring 2>/dev/null | grep -q archlinux-keyring; then
 	pacman-key --init
 	pacman-key --populate archlinux
 fi
-pacman -Syu --noconfirm \
+pacman -Syu --noconfirm --overwrite "*" \
+	base-devel git patchelf wget xorg-server-xvfb python3 \
+	$RECIPE_BUILD_DEPS $DEPLOY_PKGS || \
+pacman -Syu --noconfirm --overwrite "*" \
 	base-devel git patchelf wget xorg-server-xvfb python3 \
 	$RECIPE_BUILD_DEPS $DEPLOY_PKGS
 
